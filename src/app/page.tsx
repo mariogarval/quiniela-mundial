@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, Btn } from "@/components/primitives";
 import { CountdownTimer } from "@/components/CountdownTimer";
+import { LandingClient } from "@/components/LandingClient";
 import { LOCK_DATE_ISO } from "@/lib/constants";
 
 export default function LandingPage() {
@@ -42,6 +43,8 @@ export default function LandingPage() {
             <Btn variant="outline">Unirme con código</Btn>
           </Link>
         </div>
+
+        <LandingClient />
 
         <div className="mt-8 grid grid-cols-2 gap-3">
           <FeatureBox title="Gratis" items={["Hasta 15 jugadores", "Predicciones de grupos", "Tabla en tiempo real"]} />
