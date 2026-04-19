@@ -31,7 +31,7 @@ export default function CreatePoolPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al crear la quiniela");
-      setStoredUser({ id: data.user.id, name: adminName, poolId: data.pool.id });
+      setStoredUser({ id: data.user.id, name: adminName, poolId: data.pool.id, poolName: data.pool.name ?? name });
       router.push(`/pool/${data.pool.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

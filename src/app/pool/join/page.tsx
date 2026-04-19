@@ -29,7 +29,7 @@ export default function JoinPoolPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al unirse");
-      setStoredUser({ id: data.user.id, name, poolId: data.pool.id });
+      setStoredUser({ id: data.user.id, name, poolId: data.pool.id, poolName: data.pool.name });
       router.push(`/pool/${data.pool.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
