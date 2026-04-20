@@ -51,7 +51,8 @@ export type Pool = {
   entry_fee_display: string | null;
   plan: "free" | "business";
   status: "open" | "locked" | "group_done" | "completed";
-  payment_status: "none" | "knockout_paid" | "business_paid";
+  payment_status: "none" | "pending" | "paid" | "declined" | "knockout_paid" | "business_paid";
+  knockout_unlocked: boolean;
   join_code: string;
   max_players: number;
   slack_webhook: string | null;

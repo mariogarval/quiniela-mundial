@@ -24,14 +24,12 @@ export function getStoredUser(): { id: string | null; name: string | null; poolI
   };
 }
 
-export function setStoredUser(u: { id: string; name: string; poolId: string; poolName?: string }) {
+export function setStoredUser(u: { id: string; name: string; poolId: string; poolName: string }) {
   if (typeof window === "undefined") return;
   localStorage.setItem(USER_KEY, u.id);
   localStorage.setItem(USER_NAME, u.name);
   localStorage.setItem(POOL_KEY, u.poolId);
-  if (u.poolName) {
-    addMembership({ userId: u.id, poolId: u.poolId, poolName: u.poolName, userName: u.name });
-  }
+  addMembership({ userId: u.id, poolId: u.poolId, poolName: u.poolName, userName: u.name });
 }
 
 export function getMemberships(): Membership[] {
@@ -41,18 +39,18 @@ export function getMemberships(): Membership[] {
   } catch { return []; }
 }
 
+export function setMemberships(batch: Membership[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(MEMBERSHIPS_KEY, JSON.stringify(batch));
+}
+
 export function addMembership(m: Membership) {
   if (typeof window === "undefined") return;
-  const existing = getMemberships().filter((x) => x.poolId !== m.poolId);
-  localStorage.setItem(MEMBERSHIPS_KEY, JSON.stringify([...existing, m]));
+  setMemberships([...getMemberships().filter((x) => x.poolId !== m.poolId), m]);
 }
 
 export function activateMembership(m: Membership) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(USER_KEY, m.userId);
-  localStorage.setItem(USER_NAME, m.userName);
-  localStorage.setItem(POOL_KEY, m.poolId);
-  addMembership(m);
+  setStoredUser({ id: m.userId, name: m.userName, poolId: m.poolId, poolName: m.poolName });
 }
 
 export function clearStoredUser() {

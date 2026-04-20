@@ -2,14 +2,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Btn, Card } from "./primitives";
-import { getMemberships, activateMembership, addMembership, type Membership } from "@/lib/session";
+import { Btn } from "./primitives";
+import { getMemberships, activateMembership, setMemberships, type Membership } from "@/lib/session";
 
 type Mode = "idle" | "login" | "results";
 
 export function LandingClient() {
   const router = useRouter();
-  const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [memberships, setMembershipsState] = useState<Membership[]>([]);
   const [mode, setMode] = useState<Mode>("idle");
   const [email, setEmail] = useState("");
   const [found, setFound] = useState<Membership[]>([]);
@@ -18,7 +18,7 @@ export function LandingClient() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setMemberships(getMemberships());
+    setMembershipsState(getMemberships());
     setHydrated(true);
   }, []);
 
@@ -31,8 +31,16 @@ export function LandingClient() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       if (!data.memberships.length) { setError("No encontramos quinielas con ese email."); setLoading(false); return; }
-      for (const m of data.memberships) addMembership(m);
-      setFound(data.memberships);
+      // Merge incoming memberships with existing ones in a single write
+      const existing = getMemberships();
+      const incoming: Membership[] = data.memberships;
+      const merged = [
+        ...existing.filter((x) => !incoming.some((m) => m.poolId === x.poolId)),
+        ...incoming,
+      ];
+      setMemberships(merged);
+      setMembershipsState(merged);
+      setFound(incoming);
       setMode("results");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al buscar");
@@ -56,22 +64,7 @@ export function LandingClient() {
         </div>
         <div className="flex flex-col gap-2">
           {memberships.map((m) => (
-            <button
-              key={m.poolId}
-              onClick={() => enter(m)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-surface border border-border hover:border-brand-green/60 transition-colors text-left"
-            >
-              <div className="w-9 h-9 rounded-xl bg-brand-greenDim border border-brand-green flex items-center justify-center font-display font-bold text-brand-green text-sm shrink-0">
-                {m.poolName.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm truncate">{m.poolName}</div>
-                <div className="text-[11px] text-textMuted truncate">{m.userName}</div>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M9 18l6-6-6-6" stroke="#00E676" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
+            <PoolEntryButton key={m.poolId} m={m} onEnter={enter} />
           ))}
         </div>
       </div>
@@ -106,26 +99,12 @@ export function LandingClient() {
   if (mode === "results") {
     return (
       <div className="mt-6">
+        <button onClick={() => { setMode("login"); setFound([]); }} className="text-xs text-textMuted mb-4 inline-block">← Volver</button>
         <h2 className="font-display text-xl font-bold mb-1">Tus Quinielas</h2>
         <p className="text-sm text-textMuted mb-4">Selecciona a cuál quieres entrar.</p>
         <div className="flex flex-col gap-2">
           {found.map((m) => (
-            <button
-              key={m.poolId}
-              onClick={() => enter(m)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-surface border border-border hover:border-brand-green/60 transition-colors text-left"
-            >
-              <div className="w-9 h-9 rounded-xl bg-brand-greenDim border border-brand-green flex items-center justify-center font-display font-bold text-brand-green text-sm shrink-0">
-                {m.poolName.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm truncate">{m.poolName}</div>
-                <div className="text-[11px] text-textMuted truncate">{m.userName}</div>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M9 18l6-6-6-6" stroke="#00E676" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
+            <PoolEntryButton key={m.poolId} m={m} onEnter={enter} />
           ))}
         </div>
       </div>
@@ -142,5 +121,25 @@ export function LandingClient() {
         ¿Ya tienes cuenta? Entra con tu email
       </button>
     </div>
+  );
+}
+
+function PoolEntryButton({ m, onEnter }: { m: Membership; onEnter: (m: Membership) => void }) {
+  return (
+    <button
+      onClick={() => onEnter(m)}
+      className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-surface border border-border hover:border-brand-green/60 transition-colors text-left"
+    >
+      <div className="w-9 h-9 rounded-xl bg-brand-greenDim border border-brand-green flex items-center justify-center font-display font-bold text-brand-green text-sm shrink-0">
+        {m.poolName.charAt(0).toUpperCase()}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold text-sm truncate">{m.poolName}</div>
+        <div className="text-[11px] text-textMuted truncate">{m.userName}</div>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M9 18l6-6-6-6" stroke="#00E676" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    </button>
   );
 }

@@ -1,11 +1,43 @@
 import { notFound } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
 import { BracketClient } from "@/components/BracketClient";
+import { KnockoutGate } from "@/components/KnockoutGate";
 import { loadGroupMatches, loadPoolWithPlayers } from "@/lib/data";
+import { getServerClient } from "@/lib/supabase";
 
 export default async function BracketPage({ params }: { params: { id: string } }) {
-  const { pool } = await loadPoolWithPlayers(params.id);
+  const { pool, players } = await loadPoolWithPlayers(params.id);
   if (!pool) return notFound();
+
+  // Check if all group matches are finished
+  const sb = getServerClient();
+  const { count: finishedGroupCount } = await sb
+    .from("matches")
+    .select("id", { count: "exact", head: true })
+    .eq("phase", "group")
+    .eq("status", "final");
+
+  const { count: totalGroupCount } = await sb
+    .from("matches")
+    .select("id", { count: "exact", head: true })
+    .eq("phase", "group");
+
+  const allGroupsDone = (finishedGroupCount ?? 0) >= (totalGroupCount ?? 72);
+
+  if (!pool.knockout_unlocked) {
+    return (
+      <main className="min-h-screen bg-bg pb-24">
+        <KnockoutGate
+          poolId={pool.id}
+          adminId={pool.admin_id}
+          playerCount={players.length}
+          allGroupsDone={allGroupsDone}
+        />
+        <BottomNav poolId={pool.id} />
+      </main>
+    );
+  }
+
   const groupMatches = await loadGroupMatches();
   return (
     <main className="min-h-screen bg-bg">

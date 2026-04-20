@@ -47,8 +47,8 @@ export default function LandingPage() {
         <LandingClient />
 
         <div className="mt-8 grid grid-cols-2 gap-3">
-          <FeatureBox title="Gratis" items={["Hasta 15 jugadores", "Predicciones de grupos", "Tabla en tiempo real"]} />
-          <FeatureBox title="Business" highlight items={["Jugadores ilimitados", "Integración Slack", "Panel HR", "PDF export"]} />
+          <FeatureBox title="Gratis" items={["Jugadores ilimitados", "Predicciones de grupos", "Tabla en tiempo real"]} />
+          <FeatureBox title="Knockout" highlight items={["Fase eliminatoria", "32 partidos más", "Campeón predicho", "$4.99 único"]} />
         </div>
 
         <p className="text-[11px] text-textSub text-center mt-8">
