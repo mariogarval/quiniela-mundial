@@ -75,7 +75,6 @@ export default async function PoolHomePage({ params }: { params: { id: string } 
       <PoolCodeCard
         joinCode={pool.join_code}
         poolName={pool.name}
-        appUrl={process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}
       />
 
       {/* CTA */}

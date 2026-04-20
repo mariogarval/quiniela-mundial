@@ -4,13 +4,13 @@ import { useState } from "react";
 export function PoolCodeCard({
   joinCode,
   poolName,
-  appUrl,
 }: {
   joinCode: string;
   poolName: string;
-  appUrl: string;
 }) {
   const [copied, setCopied] = useState(false);
+
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   const copy = async () => {
     await navigator.clipboard.writeText(joinCode);
@@ -19,10 +19,10 @@ export function PoolCodeCard({
   };
 
   const waText = encodeURIComponent(
-    `¡Únete a mi Quiniela del Mundial 2026! 🌍⚽\nQuiniela: ${poolName}\nCódigo: ${joinCode}\n👉 ${appUrl}/pool/join`
+    `¡Únete a mi Quiniela del Mundial 2026! 🌍⚽\nQuiniela: ${poolName}\nCódigo: ${joinCode}\n👉 ${origin}/pool/join`
   );
 
-  const slackText = `¡Únete a mi Quiniela del Mundial 2026! 🌍⚽ Quiniela: ${poolName} | Código: ${joinCode} | ${appUrl}/pool/join`;
+  const slackText = `¡Únete a mi Quiniela del Mundial 2026! 🌍⚽ Quiniela: ${poolName} | Código: ${joinCode} | ${origin}/pool/join`;
 
   return (
     <div className="mx-4 mb-4 rounded-2xl border border-brand-green/40 bg-brand-greenDim px-4 py-3">

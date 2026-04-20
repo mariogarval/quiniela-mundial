@@ -55,7 +55,7 @@ Semifinales: ${semis.map(s => `${s.flag} ${s.name}`).join(", ")}
   };
 
   const shareBusiness = () => {
-    const msg = `Hola, estuve usando Quiniela Mundial con mi grupo y está genial. Tienen un plan para empresas con Slack. Te paso el link: https://quiniela-mundial.vercel.app/business`;
+    const msg = `Hola, estuve usando Quiniela Mundial con mi grupo y está genial. Tienen un plan para empresas con Slack. Te paso el link: ${appUrl}/business`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
