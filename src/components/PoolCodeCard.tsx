@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function PoolCodeCard({
   joinCode,
@@ -9,8 +9,11 @@ export function PoolCodeCard({
   poolName: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const [origin, setOrigin] = useState("");
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
 
   const copy = async () => {
     await navigator.clipboard.writeText(joinCode);

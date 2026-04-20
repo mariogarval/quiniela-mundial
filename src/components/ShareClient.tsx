@@ -40,7 +40,8 @@ export function ShareClient({ poolId, poolName }: { poolId: string; poolName: st
   const fourthPlace = thirdPick ? pickLoser(thirdPick) : null;
   const semis = sfPicks.map(pickLoser).filter(Boolean) as { code: string; name: string; flag: string }[];
 
-  const appUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const [appUrl, setAppUrl] = useState("");
+  useEffect(() => { setAppUrl(window.location.origin); }, []);
 
   const shareBracket = () => {
     if (!champion) return;
