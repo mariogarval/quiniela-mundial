@@ -20,5 +20,9 @@ export function getServerClient(): SupabaseClient {
   }
   return createClient(URL, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      // Opt out of Next.js fetch cache so server pages always read live data
+      fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+    },
   });
 }
