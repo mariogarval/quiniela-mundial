@@ -45,7 +45,7 @@ export default async function PoolHomePage({ params }: { params: { id: string } 
             <p className="text-xs text-textMuted mt-1">
               Admin: <span className="text-white">{players.find((p) => p.is_admin)?.name ?? "—"}</span>
             </p>
-            <p className="text-[10px] text-textSub mt-0.5">{players.length} jugadores · Plan {pool.plan}</p>
+            <p className="text-[10px] text-textSub mt-0.5">{players.length} jugadores</p>
           </div>
           <div className="w-11 h-11 rounded-xl bg-brand-greenDim border border-brand-green flex items-center justify-center">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">

@@ -9,7 +9,7 @@ function randomCode(len = 6) {
 // POST /api/pool — create a new pool (and its admin user row)
 export async function POST(req: Request) {
   try {
-    const { name, adminName, adminEmail, entryFeeDisplay, plan } = await req.json();
+    const { name, adminName, adminEmail } = await req.json();
     if (!name || !adminName || !adminEmail) {
       return NextResponse.json({ error: "Campos requeridos faltantes" }, { status: 400 });
     }
@@ -27,9 +27,8 @@ export async function POST(req: Request) {
       .from("pools")
       .insert({
         name, admin_id: adminId, admin_email: adminEmail,
-        entry_fee_display: entryFeeDisplay || null,
-        plan: plan === "business" ? "business" : "free",
-        max_players: plan === "business" ? 10000 : 15,
+        plan: "free",
+        max_players: 10000,
         join_code: joinCode,
       })
       .select()
@@ -61,14 +60,6 @@ export async function PUT(req: Request) {
     const sb = getServerClient();
     const { data: pool } = await sb.from("pools").select("*").eq("join_code", joinCode).maybeSingle();
     if (!pool) return NextResponse.json({ error: "Código no encontrado" }, { status: 404 });
-
-    const { count } = await sb
-      .from("users")
-      .select("id", { count: "exact", head: true })
-      .eq("pool_id", pool.id);
-    if ((count ?? 0) >= pool.max_players) {
-      return NextResponse.json({ error: "La quiniela está llena" }, { status: 409 });
-    }
 
     // Reuse user if email already joined this pool
     const { data: existing } = await sb

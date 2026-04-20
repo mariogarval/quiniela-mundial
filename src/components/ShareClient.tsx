@@ -55,7 +55,7 @@ Semifinales: ${semis.map(s => `${s.flag} ${s.name}`).join(", ")}
   };
 
   const shareBusiness = () => {
-    const msg = `Estoy usando esta quiniela del Mundial con mi grupo y está muy buena. Tienen un plan para empresas con Slack — perfecto para el equipo. ${appUrl}`;
+    const msg = `Hola, estuve usando Quiniela Mundial con mi grupo y está genial. Tienen un plan para empresas con Slack. Te paso el link: https://quiniela-mundial.vercel.app/business`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
@@ -131,7 +131,7 @@ Semifinales: ${semis.map(s => `${s.flag} ${s.name}`).join(", ")}
           Compartir en WhatsApp
         </Btn>
         <Btn variant="outline" onClick={shareBusiness}>
-          💼 Llevar a mi empresa
+          💼 ¿Usas esto en tu empresa?
         </Btn>
       </div>
 
