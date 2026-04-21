@@ -64,6 +64,7 @@ export function GruposClient({
     .filter((s) => s && s.home !== "" && s.away !== "").length;
 
   const allDone = totalCompleted === 72;
+  const currentGroupDone = groupCompleted === currentMatches.length && currentMatches.length > 0;
 
   const flush = async () => {
     if (!userId || locked) return;
@@ -104,6 +105,14 @@ export function GruposClient({
   };
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  const saveGroupAndAdvance = async () => {
+    await flush();
+    const idx = GROUP_LETTERS.indexOf(currentGroup as typeof GROUP_LETTERS[number]);
+    if (idx < GROUP_LETTERS.length - 1) {
+      setCurrentGroup(GROUP_LETTERS[idx + 1]);
+    }
+  };
 
   return (
     <div className="pb-24">
@@ -212,11 +221,23 @@ export function GruposClient({
       </div>
 
       <div className="px-4">
-        <Link href={`/pool/${poolId}/bracket`} className="block">
-          <Btn variant="gradient" disabled={!allDone}>
-            {allDone ? "Continuar → Tu Llave" : `Faltan ${72 - totalCompleted} partidos`}
+        {allDone ? (
+          <Link href={`/pool/${poolId}/bracket`} className="block">
+            <Btn variant="gradient">Continuar → Tu Llave</Btn>
+          </Link>
+        ) : (
+          <Btn
+            variant="gradient"
+            disabled={!currentGroupDone || saveState === "saving"}
+            onClick={saveGroupAndAdvance}
+          >
+            {saveState === "saving"
+              ? "Guardando…"
+              : currentGroupDone
+                ? `Guardar Grupo ${currentGroup} →`
+                : `Completa el Grupo ${currentGroup} (${groupCompleted}/6)`}
           </Btn>
-        </Link>
+        )}
       </div>
     </div>
   );

@@ -71,7 +71,7 @@ export async function POST(req: Request) {
 
     if (!lsRes.ok) {
       const err = await lsRes.json();
-      throw new Error(err?.errors?.[0]?.detail ?? "Lemon Squeezy error");
+      throw new Error(err?.errors?.[0]?.detail ?? "Error al procesar el pago");
     }
 
     const lsData = await lsRes.json();
