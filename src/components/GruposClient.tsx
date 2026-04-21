@@ -9,6 +9,15 @@ import type { Match } from "@/types";
 import { getStoredUser } from "@/lib/session";
 
 type Scores = Record<string, { home: string; away: string }>;
+type MatchOdds = {
+  matchId: string;
+  homeWinProb: number;
+  drawProb: number;
+  awayWinProb: number;
+  suggestedHome: number;
+  suggestedAway: number;
+  source: "odds_api" | "elo";
+};
 
 export function GruposClient({
   poolId, matches, initialScores,
@@ -23,7 +32,8 @@ export function GruposClient({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [userId, setUserId] = useState<string | null>(null);
   const [aiAccess, setAiAccess] = useState<{ hasAccess: boolean; trialUsed: boolean } | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
+  const [groupOdds, setGroupOdds] = useState<MatchOdds[] | null>(null);
+  const [oddsLoading, setOddsLoading] = useState(false);
   const locked = useMemo(() => new Date(LOCK_DATE_ISO).getTime() <= Date.now(), []);
   const pendingRef = useRef<Record<string, { home: string; away: string }>>({});
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -54,6 +64,9 @@ export function GruposClient({
         .catch(() => {});
     }
   }, [poolId]);
+
+  // Reset odds panel when switching groups
+  useEffect(() => { setGroupOdds(null); }, [currentGroup]);
 
   const byGroup = useMemo(() => {
     const m: Record<string, Match[]> = {};
@@ -120,9 +133,9 @@ export function GruposClient({
     }
   };
 
-  const handleAiFill = async () => {
+  const handleOddsFetch = async () => {
     if (!userId || locked) return;
-    setAiLoading(true);
+    setOddsLoading(true);
     try {
       const res = await fetch("/api/ai-predict", {
         method: "POST",
@@ -132,8 +145,8 @@ export function GruposClient({
           poolId,
           matches: currentMatches.map((m) => ({
             id: m.id,
-            homeName: m.home_team_name ?? "",
-            awayName: m.away_team_name ?? "",
+            homeCode: m.home_team_code ?? "",
+            awayCode: m.away_team_code ?? "",
           })),
         }),
       });
@@ -142,17 +155,22 @@ export function GruposClient({
         return;
       }
       const data = await res.json();
-      for (const p of data.predictions) {
-        setScore(p.matchId, "home", String(p.homeScore));
-        setScore(p.matchId, "away", String(p.awayScore));
-      }
+      setGroupOdds(data.odds ?? null);
       setAiAccess((prev) => prev ? { ...prev, trialUsed: true } : prev);
     } finally {
-      setAiLoading(false);
+      setOddsLoading(false);
     }
   };
 
-  const handleAiUnlock = async () => {
+  const applyOdds = () => {
+    if (!groupOdds || locked) return;
+    for (const o of groupOdds) {
+      setScore(o.matchId, "home", String(o.suggestedHome));
+      setScore(o.matchId, "away", String(o.suggestedAway));
+    }
+  };
+
+  const handleOddsUnlock = async () => {
     if (!userId) return;
     try {
       const res = await fetch("/api/ai/unlock", {
@@ -161,10 +179,7 @@ export function GruposClient({
         body: JSON.stringify({ userId, poolId }),
       });
       const data = await res.json();
-      if (data.unlocked) {
-        setAiAccess({ hasAccess: true, trialUsed: true });
-        return;
-      }
+      if (data.unlocked) { setAiAccess({ hasAccess: true, trialUsed: true }); return; }
       if (data.checkoutUrl) window.location.href = data.checkoutUrl;
     } catch {
       // network failure — user can retry
@@ -224,17 +239,17 @@ export function GruposClient({
             <div className="flex items-center gap-2">
               {!locked && aiAccess && (
                 <button
-                  onClick={handleAiFill}
-                  disabled={aiLoading}
+                  onClick={handleOddsFetch}
+                  disabled={oddsLoading}
                   className="px-3 h-8 rounded-lg bg-brand-greenDim border border-brand-green/60 text-brand-green text-xs font-semibold flex items-center gap-1.5 transition-all disabled:opacity-50"
                 >
-                  {aiLoading
-                    ? "Analizando…"
+                  {oddsLoading
+                    ? "Cargando…"
                     : aiAccess.hasAccess
-                      ? "✨ IA · Ilimitado"
+                      ? "📊 Pronóstico · Ilimitado"
                       : !aiAccess.trialUsed
-                        ? "✨ IA · Gratis"
-                        : "✨ IA · $2.99"}
+                        ? "📊 Pronóstico · Gratis"
+                        : "📊 Pronóstico · $2.99"}
                 </button>
               )}
               <div className="text-right">
@@ -246,33 +261,58 @@ export function GruposClient({
 
           {currentMatches.map((m) => {
             const row = scores[m.id] ?? { home: "", away: "" };
+            const odds = groupOdds?.find((o) => o.matchId === m.id);
             return (
-              <MatchRow
-                key={m.id}
-                match={{
-                  id: m.id,
-                  homeName: m.home_team_name ?? "",
-                  awayName: m.away_team_name ?? "",
-                  homeFlag: m.home_team_flag ?? "",
-                  awayFlag: m.away_team_flag ?? "",
-                  date: m.match_date,
-                  stadium: m.stadium,
-                }}
-                score={row}
-                onScore={(side, val) => setScore(m.id, side, val)}
-                locked={locked}
-              />
+              <div key={m.id}>
+                <MatchRow
+                  match={{
+                    id: m.id,
+                    homeName: m.home_team_name ?? "",
+                    awayName: m.away_team_name ?? "",
+                    homeFlag: m.home_team_flag ?? "",
+                    awayFlag: m.away_team_flag ?? "",
+                    date: m.match_date,
+                    stadium: m.stadium,
+                  }}
+                  score={row}
+                  onScore={(side, val) => setScore(m.id, side, val)}
+                  locked={locked}
+                />
+                {odds && (
+                  <OddsPanel
+                    homeName={m.home_team_name ?? ""}
+                    awayName={m.away_team_name ?? ""}
+                    odds={odds}
+                  />
+                )}
+              </div>
             );
           })}
 
+          {/* Apply odds button */}
+          {groupOdds && !locked && (
+            <div className="px-4 py-3 border-t border-border flex items-center justify-between">
+              <span className="text-xs text-textMuted">
+                Pronóstico del mercado · {groupOdds[0]?.source === "odds_api" ? "Casas de apuestas" : "Ranking FIFA"}
+              </span>
+              <button
+                onClick={applyOdds}
+                className="px-3 h-8 rounded-lg border border-brand-green/60 text-brand-green text-xs font-semibold"
+              >
+                Aplicar sugerencias
+              </button>
+            </div>
+          )}
+
+          {/* Paywall */}
           {aiAccess?.trialUsed && !aiAccess?.hasAccess && (
             <div className="mx-4 my-3 rounded-xl border border-brand-green/40 bg-brand-greenDim p-4">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">✨</span>
-                <span className="font-semibold text-sm">Desbloquea IA para todo el torneo</span>
+                <span className="text-lg">📊</span>
+                <span className="font-semibold text-sm">Desbloquea pronósticos para todo el torneo</span>
               </div>
-              <p className="text-xs text-textMuted mb-3 pl-7">Predicciones de IA para los 12 grupos · Pago único de $2.99</p>
-              <Btn variant="gradient" onClick={handleAiUnlock}>Desbloquear · $2.99</Btn>
+              <p className="text-xs text-textMuted mb-3 pl-7">Probabilidades del mercado para los 12 grupos · Pago único de $2.99</p>
+              <Btn variant="gradient" onClick={handleOddsUnlock}>Desbloquear · $2.99</Btn>
             </div>
           )}
         </Card>
@@ -323,6 +363,45 @@ export function GruposClient({
                 : `Completa el Grupo ${currentGroup} (${groupCompleted}/6)`}
           </Btn>
         )}
+      </div>
+    </div>
+  );
+}
+
+function OddsPanel({
+  homeName,
+  awayName,
+  odds,
+}: {
+  homeName: string;
+  awayName: string;
+  odds: MatchOdds;
+}) {
+  const hp = Math.round(odds.homeWinProb * 100);
+  const dp = Math.round(odds.drawProb * 100);
+  const ap = Math.round(odds.awayWinProb * 100);
+  const homeLeads = odds.homeWinProb >= odds.awayWinProb;
+
+  return (
+    <div className="px-4 py-2.5 border-b border-border/40 bg-surface/30 text-xs">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <span className={["font-semibold flex-1 truncate", homeLeads ? "text-white" : "text-textMuted"].join(" ")}>
+          {homeName} {hp}%
+        </span>
+        <span className="text-textMuted shrink-0">Empate {dp}%</span>
+        <span className={["font-semibold flex-1 text-right truncate", !homeLeads ? "text-white" : "text-textMuted"].join(" ")}>
+          {ap}% {awayName}
+        </span>
+      </div>
+      {/* Probability bar */}
+      <div className="flex rounded-full overflow-hidden h-1.5 gap-px">
+        <div style={{ width: `${hp}%` }} className="bg-brand-green" />
+        <div style={{ width: `${dp}%` }} className="bg-amber" />
+        <div style={{ width: `${ap}%` }} className="bg-textMuted" />
+      </div>
+      <div className="text-textMuted mt-1.5 text-center text-[10px]">
+        Resultado sugerido:&nbsp;
+        <span className="text-white font-bold">{odds.suggestedHome}–{odds.suggestedAway}</span>
       </div>
     </div>
   );
