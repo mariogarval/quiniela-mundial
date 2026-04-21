@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerClient } from "@/lib/supabase";
+import { createLSCheckout } from "@/lib/lemon-squeezy";
 
 // POST — initiate Lemon Squeezy checkout to unlock knockout phase
 export async function POST(req: Request) {
@@ -30,8 +31,9 @@ export async function POST(req: Request) {
 
     const productId = process.env.LEMONSQUEEZY_PRODUCT_ID_KNOCKOUT;
     const apiKey = process.env.LEMONSQUEEZY_API_KEY;
+    const storeId = process.env.LEMONSQUEEZY_STORE_ID;
 
-    if (!productId || !apiKey) {
+    if (!productId || !apiKey || !storeId) {
       // Dev fallback: auto-unlock without payment
       await sb.from("pools").update({
         knockout_unlocked: true,
@@ -40,43 +42,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ checkoutUrl: null, unlocked: true });
     }
 
-    // Create Lemon Squeezy checkout
-    const lsRes = await fetch("https://api.lemonsqueezy.com/v1/checkouts", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/vnd.api+json",
-        "Accept": "application/vnd.api+json",
-      },
-      body: JSON.stringify({
-        data: {
-          type: "checkouts",
-          attributes: {
-            custom_price: 499, // $4.99 in cents
-            checkout_data: {
-              custom: { pool_id: poolId },
-            },
-          },
-          relationships: {
-            store: {
-              data: { type: "stores", id: process.env.LEMONSQUEEZY_STORE_ID },
-            },
-            variant: {
-              data: { type: "variants", id: productId },
-            },
-          },
-        },
-      }),
-    });
-
-    if (!lsRes.ok) {
-      const err = await lsRes.json();
-      throw new Error(err?.errors?.[0]?.detail ?? "Error al procesar el pago");
-    }
-
-    const lsData = await lsRes.json();
-    const checkoutUrl = lsData?.data?.attributes?.url;
-
+    const checkoutUrl = await createLSCheckout(apiKey, storeId, productId, 499, { pool_id: poolId });
     return NextResponse.json({ checkoutUrl });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

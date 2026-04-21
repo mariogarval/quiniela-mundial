@@ -22,6 +22,8 @@ export function GruposClient({
   const [showStandings, setShowStandings] = useState(true);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [userId, setUserId] = useState<string | null>(null);
+  const [aiAccess, setAiAccess] = useState<{ hasAccess: boolean; trialUsed: boolean } | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
   const locked = useMemo(() => new Date(LOCK_DATE_ISO).getTime() <= Date.now(), []);
   const pendingRef = useRef<Record<string, { home: string; away: string }>>({});
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -30,24 +32,28 @@ export function GruposClient({
     const u = getStoredUser();
     setUserId(u.id);
     if (u.id) {
-      fetch(`/api/predictions?userId=${u.id}`)
-        .then((r) => r.json())
-        .then((data) => {
-          if (!data?.predictions) return;
-          setScores((prev) => {
-            const next = { ...prev };
-            for (const p of data.predictions) {
-              next[p.match_id] = {
-                home: String(p.predicted_home_score),
-                away: String(p.predicted_away_score),
-              };
-            }
-            return next;
-          });
+      Promise.all([
+        fetch(`/api/predictions?userId=${u.id}`).then((r) => r.json()),
+        fetch(`/api/ai-predict?userId=${u.id}&poolId=${poolId}`).then((r) => r.json()),
+      ])
+        .then(([predData, aiData]) => {
+          if (predData?.predictions) {
+            setScores((prev) => {
+              const next = { ...prev };
+              for (const p of predData.predictions) {
+                next[p.match_id] = {
+                  home: String(p.predicted_home_score),
+                  away: String(p.predicted_away_score),
+                };
+              }
+              return next;
+            });
+          }
+          if (aiData) setAiAccess(aiData);
         })
         .catch(() => {});
     }
-  }, []);
+  }, [poolId]);
 
   const byGroup = useMemo(() => {
     const m: Record<string, Match[]> = {};
@@ -114,6 +120,57 @@ export function GruposClient({
     }
   };
 
+  const handleAiFill = async () => {
+    if (!userId || locked) return;
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/ai-predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          poolId,
+          matches: currentMatches.map((m) => ({
+            id: m.id,
+            homeName: m.home_team_name ?? "",
+            awayName: m.away_team_name ?? "",
+          })),
+        }),
+      });
+      if (res.status === 402) {
+        setAiAccess({ hasAccess: false, trialUsed: true });
+        return;
+      }
+      const data = await res.json();
+      for (const p of data.predictions) {
+        setScore(p.matchId, "home", String(p.homeScore));
+        setScore(p.matchId, "away", String(p.awayScore));
+      }
+      setAiAccess((prev) => prev ? { ...prev, trialUsed: true } : prev);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleAiUnlock = async () => {
+    if (!userId) return;
+    try {
+      const res = await fetch("/api/ai/unlock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, poolId }),
+      });
+      const data = await res.json();
+      if (data.unlocked) {
+        setAiAccess({ hasAccess: true, trialUsed: true });
+        return;
+      }
+      if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+    } catch {
+      // network failure — user can retry
+    }
+  };
+
   return (
     <div className="pb-24">
       <div className="px-4 pt-14 pb-2">
@@ -164,9 +221,26 @@ export function GruposClient({
                 </div>
               </div>
             </div>
-            <div className="text-right">
-              <div className="text-[10px] text-textMuted uppercase tracking-wide">{groupCompleted}/6</div>
-              <div className="font-display text-lg font-bold">{currentTeams.length}</div>
+            <div className="flex items-center gap-2">
+              {!locked && aiAccess && (
+                <button
+                  onClick={handleAiFill}
+                  disabled={aiLoading}
+                  className="px-3 h-8 rounded-lg bg-brand-greenDim border border-brand-green/60 text-brand-green text-xs font-semibold flex items-center gap-1.5 transition-all disabled:opacity-50"
+                >
+                  {aiLoading
+                    ? "Analizando…"
+                    : aiAccess.hasAccess
+                      ? "✨ IA · Ilimitado"
+                      : !aiAccess.trialUsed
+                        ? "✨ IA · Gratis"
+                        : "✨ IA · $2.99"}
+                </button>
+              )}
+              <div className="text-right">
+                <div className="text-[10px] text-textMuted uppercase tracking-wide">{groupCompleted}/6</div>
+                <div className="font-display text-lg font-bold">{currentTeams.length}</div>
+              </div>
             </div>
           </div>
 
@@ -190,6 +264,17 @@ export function GruposClient({
               />
             );
           })}
+
+          {aiAccess?.trialUsed && !aiAccess?.hasAccess && (
+            <div className="mx-4 my-3 rounded-xl border border-brand-green/40 bg-brand-greenDim p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-lg">✨</span>
+                <span className="font-semibold text-sm">Desbloquea IA para todo el torneo</span>
+              </div>
+              <p className="text-xs text-textMuted mb-3 pl-7">Predicciones de IA para los 12 grupos · Pago único de $2.99</p>
+              <Btn variant="gradient" onClick={handleAiUnlock}>Desbloquear · $2.99</Btn>
+            </div>
+          )}
         </Card>
       </div>
 
