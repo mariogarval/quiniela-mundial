@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 40" width="140" height="40">
+  <!-- Icon: FP monogram on dark-green rounded square -->
+  <rect width="40" height="40" rx="9" fill="#1a5c38"/>
+  <!-- Left vertical stem -->
+  <rect x="9" y="10" width="3.5" height="20" rx="1" fill="white"/>
+  <!-- Top rail -->
+  <rect x="9" y="10" width="15" height="3.5" rx="1" fill="white"/>
+  <!-- Middle rail -->
+  <rect x="9" y="18.25" width="15" height="3.5" rx="1" fill="white"/>
+  <!-- P right arc -->
+  <rect x="20.5" y="10" width="3.5" height="12" rx="1" fill="white"/>
+  <!-- Wordmark: FUTPUL -->
+  <text x="50" y="27" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="16" letter-spacing="2" fill="white">FUTPUL</text>
+</svg>

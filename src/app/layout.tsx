@@ -1,9 +1,16 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Quiniela Mundial 2026",
-  description: "La quiniela del Mundial 2026 para ti y tu crew.",
+  title: "FUTPUL",
+  description: "Haz tus predicciones del Mundial 2026 con tu grupo. Gratis en futpul.com",
+  metadataBase: new URL("https://futpul.com"),
+  openGraph: {
+    title: "FUTPUL",
+    description: "Haz tus predicciones del Mundial 2026 con tu grupo. Gratis en futpul.com",
+    images: ["/images/futpul-logo.svg"],
+  },
 };
 
 export const viewport: Viewport = {
@@ -16,7 +23,13 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className="bg-bg">
-      <body className="min-h-screen bg-bg text-white font-sans antialiased">{children}</body>
+      <head>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+      </head>
+      <body className="min-h-screen bg-bg text-white font-sans antialiased">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

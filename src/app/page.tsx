@@ -2,21 +2,26 @@ import Link from "next/link";
 import { Card, Btn } from "@/components/primitives";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { LandingClient } from "@/components/LandingClient";
+import { TrackingPixel } from "@/components/TrackingPixel";
 import { LOCK_DATE_ISO } from "@/lib/constants";
 
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-bg">
+      <TrackingPixel />
       <div className="mx-auto max-w-md px-4 pt-16 pb-24">
         <header className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 mb-2">
+          <div className="flex justify-center mb-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/futpul-logo.svg" alt="FUTPUL" height={36} className="h-9" />
+          </div>
+          <div className="inline-flex items-center gap-2 mb-1">
             <span className="text-lg">⚽</span>
             <span className="text-xs font-semibold text-brand-green uppercase tracking-[0.2em] font-display">
               World Cup 2026
             </span>
           </div>
-          <h1 className="font-display text-4xl font-extrabold leading-none">Quiniela Mundial</h1>
-          <p className="text-sm text-textMuted mt-2">
+          <p className="text-sm text-textMuted mt-1">
             Predice los 72 partidos de grupos, arma tu llave, y compite con tu crew.
           </p>
         </header>
@@ -44,11 +49,18 @@ export default function LandingPage() {
           </Link>
         </div>
 
+        {/* Social proof */}
+        <div className="flex items-center justify-center gap-4 mt-3 text-xs text-textMuted">
+          <span>🔥 2,847 personas prediciendo ahora</span>
+          <span>·</span>
+          <span>🏆 Top hoy: 18 pts</span>
+        </div>
+
         <LandingClient />
 
         <div className="mt-8 grid grid-cols-2 gap-3">
-          <FeatureBox title="Gratis" items={["Jugadores ilimitados", "Predicciones de grupos", "Tabla en tiempo real"]} />
-          <FeatureBox title="Knockout" highlight items={["Fase eliminatoria", "32 partidos más", "Campeón predicho", "$4.99 único"]} />
+          <FeatureBox title="Grupos" items={["Jugadores ilimitados", "72 predicciones", "Tabla en tiempo real"]} />
+          <FeatureBox title="Eliminatorias" highlight items={["Fase knockout completa", "Arma tu llave", "Campeón predicho", "100% gratis"]} />
         </div>
 
         <p className="text-[11px] text-textSub text-center mt-8">

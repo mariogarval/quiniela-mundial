@@ -5,6 +5,7 @@ import { Card, Btn, Flag } from "./primitives";
 import { Confetti } from "./Confetti";
 import { BottomNav } from "./BottomNav";
 import { getStoredUser } from "@/lib/session";
+import { track } from "@/lib/analytics";
 
 type BracketPick = {
   phase: string;
@@ -45,18 +46,14 @@ export function ShareClient({ poolId, poolName }: { poolId: string; poolName: st
 
   const shareBracket = () => {
     if (!champion) return;
-    const msg = `🏆 Mi quiniela del Mundial 2026 está lista.
+    track("share_clicked", { pool_id: poolId, method: "whatsapp", champion: champion.name });
+    const msg = `🏆 Mi quiniela del Mundial 2026 en FUTPUL está lista.
 
 Campeón: ${champion.flag} ${champion.name}
 Final: ${runnerUp?.flag} ${runnerUp?.name}
 Semifinales: ${semis.map(s => `${s.flag} ${s.name}`).join(", ")}
 
-Únete a ${poolName}: ${appUrl}/pool/${poolId}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
-  };
-
-  const shareBusiness = () => {
-    const msg = `Hola, estuve usando Quiniela Mundial con mi grupo y está genial. Tienen un plan para empresas con Slack. Te paso el link: ${appUrl}/business`;
+Únete a ${poolName}: https://futpul.com/pool/join?code=${poolId}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
@@ -130,9 +127,6 @@ Semifinales: ${semis.map(s => `${s.flag} ${s.name}`).join(", ")}
             <path d="M17.6 6.3A8 8 0 004.1 16.5L3 21l4.6-1.2a8 8 0 004.4 1.3 8 8 0 008-8 8 8 0 00-2.4-5.8z" />
           </svg>
           Compartir en WhatsApp
-        </Btn>
-        <Btn variant="outline" onClick={shareBusiness}>
-          💼 ¿Usas esto en tu empresa?
         </Btn>
       </div>
 

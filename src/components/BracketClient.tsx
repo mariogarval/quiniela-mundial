@@ -7,6 +7,7 @@ import { buildR32, nextRound, thirdPlacePair, type BracketNodePick } from "@/lib
 import { computeStandings } from "@/lib/standings";
 import { phaseDisplayName } from "@/lib/scoring";
 import { getStoredUser } from "@/lib/session";
+import { track } from "@/lib/analytics";
 import type { Match } from "@/types";
 
 type Pair = {
@@ -55,6 +56,7 @@ export function BracketClient({
       }
       setPicks(pickMap);
       setHydrated(true);
+      track("bracket_opened", { pool_id: poolId });
     })();
   }, [poolId, router]);
 
@@ -227,6 +229,7 @@ export function BracketClient({
         body: JSON.stringify({ userId, picks: rows, submit: true }),
       });
       if (!res.ok) throw new Error((await res.json()).error || "Error al enviar");
+      track("bracket_submitted", { pool_id: poolId });
       router.push(`/pool/${poolId}/share`);
     } catch {
       setSaveState("error");

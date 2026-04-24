@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Btn } from "./primitives";
 import { getMemberships, activateMembership, setMemberships, type Membership } from "@/lib/session";
+import { identify, track } from "@/lib/analytics";
 
 type Mode = "idle" | "login" | "results";
 
@@ -49,6 +50,8 @@ export function LandingClient() {
 
   const enter = (m: Membership) => {
     activateMembership(m);
+    identify(m.userId, { name: m.userName });
+    track("login_completed", { pool_id: m.poolId, pool_name: m.poolName });
     router.push(`/pool/${m.poolId}`);
   };
 

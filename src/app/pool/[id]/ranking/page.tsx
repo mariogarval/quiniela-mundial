@@ -3,6 +3,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { Card } from "@/components/primitives";
 import { loadPoolWithPlayers } from "@/lib/data";
 import { getServerClient } from "@/lib/supabase";
+import { PAYMENTS_ENABLED } from "@/lib/flags";
 
 export default async function RankingPage({ params }: { params: { id: string } }) {
   const { pool, players } = await loadPoolWithPlayers(params.id);
@@ -18,7 +19,7 @@ export default async function RankingPage({ params }: { params: { id: string } }
     .map((p) => ({ ...p, pts: totals.get(p.id) ?? 0 }))
     .sort((a, b) => b.pts - a.pts);
 
-  const frozen = pool.plan === "free" && pool.payment_status === "none";
+  const frozen = PAYMENTS_ENABLED && pool.plan === "free" && pool.payment_status === "none";
 
   return (
     <main className="min-h-screen bg-bg pb-24">

@@ -7,6 +7,8 @@ import { StandingsTable } from "./StandingsTable";
 import { GROUPS, GROUP_LETTERS, LOCK_DATE_ISO } from "@/lib/constants";
 import type { Match } from "@/types";
 import { getStoredUser } from "@/lib/session";
+import { PAYMENTS_ENABLED } from "@/lib/flags";
+import { track } from "@/lib/analytics";
 
 type Scores = Record<string, { home: string; away: string }>;
 type MatchOdds = {
@@ -41,16 +43,20 @@ export function GruposClient({
   useEffect(() => {
     const u = getStoredUser();
     setUserId(u.id);
+    track("grupos_opened", { pool_id: poolId });
     if (u.id) {
-      Promise.all([
+      const fetches: Promise<unknown>[] = [
         fetch(`/api/predictions?userId=${u.id}`).then((r) => r.json()),
-        fetch(`/api/ai-predict?userId=${u.id}&poolId=${poolId}`).then((r) => r.json()),
-      ])
+      ];
+      if (PAYMENTS_ENABLED) {
+        fetches.push(fetch(`/api/ai-predict?userId=${u.id}&poolId=${poolId}`).then((r) => r.json()));
+      }
+      Promise.all(fetches)
         .then(([predData, aiData]) => {
-          if (predData?.predictions) {
+          if ((predData as { predictions?: unknown[] })?.predictions) {
             setScores((prev) => {
               const next = { ...prev };
-              for (const p of predData.predictions) {
+              for (const p of (predData as { predictions: { match_id: string; predicted_home_score: number; predicted_away_score: number }[] }).predictions) {
                 next[p.match_id] = {
                   home: String(p.predicted_home_score),
                   away: String(p.predicted_away_score),
@@ -59,7 +65,7 @@ export function GruposClient({
               return next;
             });
           }
-          if (aiData) setAiAccess(aiData);
+          if (PAYMENTS_ENABLED && aiData) setAiAccess(aiData as { hasAccess: boolean; trialUsed: boolean });
         })
         .catch(() => {});
     }
@@ -127,6 +133,13 @@ export function GruposClient({
 
   const saveGroupAndAdvance = async () => {
     await flush();
+    const groupsDoneCount = GROUP_LETTERS.filter((g) =>
+      (byGroup[g] ?? []).every((m) => scores[m.id]?.home !== "" && scores[m.id]?.away !== "")
+    ).length;
+    track("group_saved", { pool_id: poolId, group: currentGroup, groups_done: groupsDoneCount });
+    if (groupsDoneCount >= GROUP_LETTERS.length) {
+      track("all_groups_done", { pool_id: poolId });
+    }
     const idx = GROUP_LETTERS.indexOf(currentGroup as typeof GROUP_LETTERS[number]);
     if (idx < GROUP_LETTERS.length - 1) {
       setCurrentGroup(GROUP_LETTERS[idx + 1]);
@@ -135,6 +148,7 @@ export function GruposClient({
 
   const handleOddsFetch = async () => {
     if (!userId || locked) return;
+    track("odds_panel_opened", { pool_id: poolId, group: currentGroup });
     setOddsLoading(true);
     try {
       const res = await fetch("/api/ai-predict", {
@@ -164,6 +178,7 @@ export function GruposClient({
 
   const applyOdds = () => {
     if (!groupOdds || locked) return;
+    track("odds_applied", { pool_id: poolId, group: currentGroup, source: groupOdds[0]?.source });
     for (const o of groupOdds) {
       setScore(o.matchId, "home", String(o.suggestedHome));
       setScore(o.matchId, "away", String(o.suggestedAway));
@@ -237,7 +252,7 @@ export function GruposClient({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {!locked && aiAccess && (
+              {!locked && (PAYMENTS_ENABLED ? !!aiAccess : true) && (
                 <button
                   onClick={handleOddsFetch}
                   disabled={oddsLoading}
@@ -245,11 +260,13 @@ export function GruposClient({
                 >
                   {oddsLoading
                     ? "Cargando…"
-                    : aiAccess.hasAccess
-                      ? "📊 Pronóstico · Ilimitado"
-                      : !aiAccess.trialUsed
-                        ? "📊 Pronóstico · Gratis"
-                        : "📊 Pronóstico · $2.99"}
+                    : PAYMENTS_ENABLED && aiAccess
+                      ? aiAccess.hasAccess
+                        ? "📊 Pronóstico · Ilimitado"
+                        : !aiAccess.trialUsed
+                          ? "📊 Pronóstico · Gratis"
+                          : "📊 Pronóstico · $2.99"
+                      : "📊 Pronóstico"}
                 </button>
               )}
               <div className="text-right">
@@ -305,7 +322,7 @@ export function GruposClient({
           )}
 
           {/* Paywall */}
-          {aiAccess?.trialUsed && !aiAccess?.hasAccess && (
+          {PAYMENTS_ENABLED && aiAccess?.trialUsed && !aiAccess?.hasAccess && (
             <div className="mx-4 my-3 rounded-xl border border-brand-green/40 bg-brand-greenDim p-4">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-lg">📊</span>
@@ -321,7 +338,12 @@ export function GruposClient({
       {/* Toggle standings */}
       <div className="px-4 pb-3">
         <button
-          onClick={() => setShowStandings((s) => !s)}
+          onClick={() => {
+            setShowStandings((s) => {
+              track("standings_toggled", { pool_id: poolId, group: currentGroup, showing: !s });
+              return !s;
+            });
+          }}
           className="w-full h-11 rounded-xl border border-borderHi bg-transparent flex items-center justify-center gap-2 text-sm font-semibold"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">

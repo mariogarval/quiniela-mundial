@@ -4,6 +4,7 @@ import { Card, Btn, Pill } from "@/components/primitives";
 import { BottomNav } from "@/components/BottomNav";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { PoolCodeCard } from "@/components/PoolCodeCard";
+import { InviteCard } from "@/components/InviteCard";
 import { loadPoolWithPlayers } from "@/lib/data";
 import { LOCK_DATE_ISO, GROUP_LETTERS } from "@/lib/constants";
 import { getServerClient } from "@/lib/supabase";
@@ -76,6 +77,9 @@ export default async function PoolHomePage({ params }: { params: { id: string } 
         joinCode={pool.join_code}
         poolName={pool.name}
       />
+
+      {/* Invite friends with personal ref link */}
+      <InviteCard joinCode={pool.join_code} poolName={pool.name} />
 
       {/* CTA */}
       <div className="px-4 pb-4">

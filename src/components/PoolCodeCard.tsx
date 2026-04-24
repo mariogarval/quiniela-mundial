@@ -22,10 +22,10 @@ export function PoolCodeCard({
   };
 
   const waText = encodeURIComponent(
-    `¡Únete a mi Quiniela del Mundial 2026! 🌍⚽\nQuiniela: ${poolName}\nCódigo: ${joinCode}\n👉 ${origin}/pool/join`
+    `¡Únete a mi quiniela del Mundial 2026 en FUTPUL! 🌍⚽\nQuiniela: ${poolName}\nCódigo: ${joinCode}\n👉 https://futpul.com/pool/join`
   );
 
-  const slackText = `¡Únete a mi Quiniela del Mundial 2026! 🌍⚽ Quiniela: ${poolName} | Código: ${joinCode} | ${origin}/pool/join`;
+  const slackText = `¡Únete a mi quiniela del Mundial 2026 en FUTPUL! 🌍⚽ Quiniela: ${poolName} | Código: ${joinCode} | https://futpul.com/pool/join`;
 
   return (
     <div className="mx-4 mb-4 rounded-2xl border border-brand-green/40 bg-brand-greenDim px-4 py-3">

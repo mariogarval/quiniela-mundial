@@ -4,6 +4,7 @@ import { Card, Btn } from "@/components/primitives";
 import { isAdminAuthed } from "@/lib/adminAuth";
 import { getServerClient } from "@/lib/supabase";
 import { AdminResults } from "@/components/AdminResults";
+import { PAYMENTS_ENABLED } from "@/lib/flags";
 
 export default async function AdminDashboard() {
   if (!isAdminAuthed()) redirect("/admin");
@@ -33,7 +34,7 @@ export default async function AdminDashboard() {
           <StatCard v={String(stats.totalPools)} l="Pools totales" />
           <StatCard v={String(stats.free)} l="Free" />
           <StatCard v={String(stats.business)} l="Business" />
-          <StatCard v={String(stats.paidPools)} l="Con pago" />
+          {PAYMENTS_ENABLED && <StatCard v={String(stats.paidPools)} l="Con pago" />}
         </div>
 
         <section className="mb-6">
@@ -47,7 +48,7 @@ export default async function AdminDashboard() {
                     <th className="text-left px-3 py-2">Admin</th>
                     <th className="text-left px-3 py-2">Plan</th>
                     <th className="text-left px-3 py-2">Estado</th>
-                    <th className="text-left px-3 py-2">Pago</th>
+                    {PAYMENTS_ENABLED && <th className="text-left px-3 py-2">Pago</th>}
                     <th className="text-left px-3 py-2">Código</th>
                   </tr>
                 </thead>
@@ -58,7 +59,7 @@ export default async function AdminDashboard() {
                       <td className="px-3 py-2 text-textMuted">{p.admin_email}</td>
                       <td className="px-3 py-2">{p.plan}</td>
                       <td className="px-3 py-2">{p.status}</td>
-                      <td className="px-3 py-2">{p.payment_status}</td>
+                      {PAYMENTS_ENABLED && <td className="px-3 py-2">{p.payment_status}</td>}
                       <td className="px-3 py-2 font-display tracking-widest">{p.join_code}</td>
                     </tr>
                   ))}

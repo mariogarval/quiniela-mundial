@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   const memberships = users.map((u) => ({
     userId: u.id,
     poolId: u.pool_id,
-    poolName: (u.pools as unknown as { name: string } | null)?.name ?? "Quiniela",
+    poolName: (u.pools as unknown as { name: string } | null)?.name ?? "FUTPUL",
     userName: u.name,
   }));
 

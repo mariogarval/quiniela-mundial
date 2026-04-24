@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, Btn } from "@/components/primitives";
 import { setStoredUser } from "@/lib/session";
+import { identify, track } from "@/lib/analytics";
 
 export default function CreatePoolPage() {
   const router = useRouter();
@@ -30,6 +31,8 @@ export default function CreatePoolPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al crear la quiniela");
       setStoredUser({ id: data.user.id, name: adminName, poolId: data.pool.id, poolName: data.pool.name ?? name });
+      identify(data.user.id, { name: adminName, role: "admin" });
+      track("pool_created", { pool_id: data.pool.id, pool_name: data.pool.name ?? name });
       router.push(`/pool/${data.pool.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

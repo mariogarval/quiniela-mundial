@@ -4,27 +4,21 @@ import { BracketClient } from "@/components/BracketClient";
 import { KnockoutGate } from "@/components/KnockoutGate";
 import { loadGroupMatches, loadPoolWithPlayers } from "@/lib/data";
 import { getServerClient } from "@/lib/supabase";
+import { PAYMENTS_ENABLED } from "@/lib/flags";
 
 export default async function BracketPage({ params }: { params: { id: string } }) {
   const { pool, players } = await loadPoolWithPlayers(params.id);
   if (!pool) return notFound();
 
-  // Check if all group matches are finished
-  const sb = getServerClient();
-  const { count: finishedGroupCount } = await sb
-    .from("matches")
-    .select("id", { count: "exact", head: true })
-    .eq("phase", "group")
-    .eq("status", "final");
+  if (PAYMENTS_ENABLED && !pool.knockout_unlocked) {
+    // Check if all group matches are finished (only needed for KnockoutGate)
+    const sb = getServerClient();
+    const [{ count: finishedGroupCount }, { count: totalGroupCount }] = await Promise.all([
+      sb.from("matches").select("id", { count: "exact", head: true }).eq("phase", "group").eq("status", "final"),
+      sb.from("matches").select("id", { count: "exact", head: true }).eq("phase", "group"),
+    ]);
+    const allGroupsDone = (finishedGroupCount ?? 0) >= (totalGroupCount ?? 72);
 
-  const { count: totalGroupCount } = await sb
-    .from("matches")
-    .select("id", { count: "exact", head: true })
-    .eq("phase", "group");
-
-  const allGroupsDone = (finishedGroupCount ?? 0) >= (totalGroupCount ?? 72);
-
-  if (!pool.knockout_unlocked) {
     return (
       <main className="min-h-screen bg-bg pb-24">
         <KnockoutGate

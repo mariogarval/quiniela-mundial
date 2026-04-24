@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
+  <rect width="40" height="40" rx="9" fill="#1a5c38"/>
+  <!-- FP ligature: F and P share two horizontal rails -->
+  <!-- Left vertical stem (shared F+P) -->
+  <rect x="9" y="10" width="3.5" height="20" rx="1" fill="white"/>
+  <!-- Top horizontal rail (F top bar + P bowl top) -->
+  <rect x="9" y="10" width="15" height="3.5" rx="1" fill="white"/>
+  <!-- Middle horizontal rail (F mid bar + P bowl bottom) -->
+  <rect x="9" y="18.25" width="15" height="3.5" rx="1" fill="white"/>
+  <!-- P right arc: top-right corner -->
+  <rect x="20.5" y="10" width="3.5" height="12" rx="1" fill="white"/>
+</svg>

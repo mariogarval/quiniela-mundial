@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { getServerClient } from "@/lib/supabase";
 import { TEAM_ENGLISH_NAMES, eloProbs, suggestScore } from "@/lib/odds-mapping";
+import { PAYMENTS_ENABLED } from "@/lib/flags";
 
 // GET /api/ai-predict?userId=&poolId=
 // Returns access status so the UI can badge the button before the user clicks
 export async function GET(req: Request) {
+  if (!PAYMENTS_ENABLED) {
+    return NextResponse.json({ hasAccess: true, trialUsed: false });
+  }
+
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
   const poolId = searchParams.get("poolId");
@@ -47,17 +52,19 @@ export async function POST(req: Request) {
 
     const sb = getServerClient();
 
-    // Check access in parallel
-    const [{ data: purchase }, { data: user }] = await Promise.all([
-      sb.from("ai_purchases").select("id").eq("user_id", userId).eq("pool_id", poolId).maybeSingle(),
-      sb.from("users").select("ai_trial_used").eq("id", userId).maybeSingle(),
-    ]);
+    if (PAYMENTS_ENABLED) {
+      // Check access in parallel
+      const [{ data: purchase }, { data: user }] = await Promise.all([
+        sb.from("ai_purchases").select("id").eq("user_id", userId).eq("pool_id", poolId).maybeSingle(),
+        sb.from("users").select("ai_trial_used").eq("id", userId).maybeSingle(),
+      ]);
 
-    if (!purchase) {
-      if (!user || user.ai_trial_used) {
-        return NextResponse.json({ requiresPayment: true }, { status: 402 });
+      if (!purchase) {
+        if (!user || user.ai_trial_used) {
+          return NextResponse.json({ requiresPayment: true }, { status: 402 });
+        }
+        await sb.from("users").update({ ai_trial_used: true }).eq("id", userId);
       }
-      await sb.from("users").update({ ai_trial_used: true }).eq("id", userId);
     }
 
     const odds = await fetchOdds(matches, sb);

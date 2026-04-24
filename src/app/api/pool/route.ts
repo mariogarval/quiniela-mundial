@@ -52,7 +52,7 @@ export async function POST(req: Request) {
 // PUT /api/pool — join existing pool by code
 export async function PUT(req: Request) {
   try {
-    const { joinCode, name, email } = await req.json();
+    const { joinCode, name, email, referredBy, utm_source, utm_medium, utm_campaign } = await req.json();
     if (!joinCode || !name || !email) {
       return NextResponse.json({ error: "Campos requeridos faltantes" }, { status: 400 });
     }
@@ -70,12 +70,24 @@ export async function PUT(req: Request) {
       .maybeSingle();
     if (existing) return NextResponse.json({ pool, user: existing });
 
+    const newUser: Record<string, unknown> = { name, email, pool_id: pool.id };
+    if (referredBy) newUser.referred_by = referredBy;
+    if (utm_source) newUser.utm_source = utm_source;
+    if (utm_medium) newUser.utm_medium = utm_medium;
+    if (utm_campaign) newUser.utm_campaign = utm_campaign;
+
     const { data: user, error: userErr } = await sb
       .from("users")
-      .insert({ name, email, pool_id: pool.id })
+      .insert(newUser)
       .select()
       .single();
     if (userErr) throw userErr;
+
+    // Increment referral_count for the referrer (best-effort)
+    if (referredBy) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (sb.rpc("increment_referral_count", { ref_user_id: referredBy }) as any).catch(() => {});
+    }
 
     return NextResponse.json({ pool, user });
   } catch (err) {
