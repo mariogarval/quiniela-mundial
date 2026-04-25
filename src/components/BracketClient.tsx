@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Btn, Flag, ProgressBar } from "./primitives";
 import { ScoreStepper } from "./MatchRow";
@@ -34,6 +34,8 @@ export function BracketClient({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [submitting, setSubmitting] = useState(false);
   const locked = useMemo(() => new Date(LOCK_DATE_ISO).getTime() <= Date.now(), []);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didInteract = useRef(false); // only autosave after first user interaction
 
   useEffect(() => {
     const u = getStoredUser();
@@ -166,9 +168,55 @@ export function BracketClient({
     sum + ph.pairs.filter((pr) => picks[`${ph.id}-${pr.slot}`]?.winner).length, 0);
   const allDone = completedTotal === 32;
 
+  // ── Autosave: persist completed picks whenever they change ────────────────
+  useEffect(() => {
+    if (!didInteract.current || !userId || !hydrated || locked) return;
+
+    const allPairs: Array<[string, Pair]> = [
+      ...r32Pairs.map((p) => ["r32", p] as [string, Pair]),
+      ...r16Pairs.map((p) => ["r16", p] as [string, Pair]),
+      ...qfPairs.map((p) => ["qf", p] as [string, Pair]),
+      ...sfPairs.map((p) => ["sf", p] as [string, Pair]),
+      ...thirdPair.map((p) => ["third", p] as [string, Pair]),
+      ...finalPair.map((p) => ["final", p] as [string, Pair]),
+    ];
+    const rows = allPairs
+      .filter(([ph, p]) => p.home && p.away && picks[`${ph}-${p.slot}`]?.winner)
+      .map(([ph, p]) => {
+        const s = picks[`${ph}-${p.slot}`];
+        return {
+          phase: ph, slot: p.slot,
+          home_team_code: p.home!.code, away_team_code: p.away!.code,
+          home_team_name: p.home!.name, away_team_name: p.away!.name,
+          home_team_flag: p.home!.flag, away_team_flag: p.away!.flag,
+          predicted_home_score: Number(s?.home ?? 0),
+          predicted_away_score: Number(s?.away ?? 0),
+          winner_code: s?.winner ?? "",
+        };
+      });
+    if (rows.length === 0) return;
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    setSaveState("saving");
+    saveTimerRef.current = setTimeout(() => {
+      fetch("/api/bracket", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, picks: rows }),
+      })
+        .then((r) => { setSaveState(r.ok ? "saved" : "error"); })
+        .catch(() => setSaveState("error"))
+        .finally(() => setTimeout(() => setSaveState("idle"), 1500));
+    }, 600);
+
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picks, userId, hydrated]);
+
   // ── Score → winner: auto-detect from score; clear when tied (penalty needed) ─
   const updatePick = (phase: string, slot: number, patch: Partial<{ home: string; away: string; winner: string }>) => {
     if (locked) return;
+    didInteract.current = true;
     const key = `${phase}-${slot}`;
     setPicks((prev) => {
       const merged = { ...(prev[key] ?? { home: "", away: "", winner: "" }), ...patch };
@@ -400,10 +448,12 @@ export function BracketClient({
           })}
         </div>
 
-        {/* Submit */}
-        {saveState === "error" && (
-          <div className="px-4 pb-2 text-xs text-danger">Error al enviar — reintenta</div>
-        )}
+        {/* Save status + submit */}
+        <div className="px-4 pb-2 flex items-center gap-2 h-6">
+          {saveState === "saving" && <><span className="w-1.5 h-1.5 rounded-full bg-amber animate-pulseDot" /><span className="text-xs text-textMuted">Guardando…</span></>}
+          {saveState === "saved"  && <><span className="w-1.5 h-1.5 rounded-full bg-brand-green" /><span className="text-xs text-brand-green">Guardado</span></>}
+          {saveState === "error"  && <span className="text-xs text-danger">Error al guardar — reintenta</span>}
+        </div>
         <div className="px-4 pb-4">
           <Btn variant="gradient" onClick={submitBracket} disabled={!allDone || submitting}>
             {submitting ? "Enviando…" : allDone ? "Enviar Quiniela completa 🏆" : `Faltan ${32 - completedTotal} picks`}
