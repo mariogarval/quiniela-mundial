@@ -202,8 +202,9 @@ export function GruposClient({
   };
 
   return (
-    <div className="pb-24">
-      <div className="px-4 pt-14 pb-2">
+    <div className="pb-24 md:pb-8">
+      <div className="max-w-xl mx-auto">
+      <div className="px-4 pt-14 md:pt-8 pb-2">
         <span className="font-display text-xs font-semibold text-brand-green uppercase tracking-[0.2em]">Fase de Grupos</span>
         <h2 className="font-display text-3xl font-extrabold mt-1">Tus Predicciones</h2>
       </div>
@@ -379,6 +380,7 @@ export function GruposClient({
                 : `Completa el Grupo ${currentGroup} (${groupCompleted}/6)`}
           </Btn>
         )}
+      </div>
       </div>
     </div>
   );

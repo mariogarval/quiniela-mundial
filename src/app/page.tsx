@@ -9,7 +9,7 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen bg-bg">
       <TrackingPixel />
-      <div className="mx-auto max-w-md px-4 pt-16 pb-24">
+      <div className="mx-auto max-w-lg px-4 pt-16 pb-16">
         <header className="text-center mb-6">
           <div className="flex justify-center mb-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}

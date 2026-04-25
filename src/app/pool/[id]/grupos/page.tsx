@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { BottomNav } from "@/components/BottomNav";
 import { GruposClient } from "@/components/GruposClient";
 import { loadGroupMatches, loadPoolWithPlayers } from "@/lib/data";
 import { getServerClient } from "@/lib/supabase";
@@ -29,7 +28,6 @@ export default async function GruposPage({
   return (
     <main className="min-h-screen bg-bg">
       <GruposClient poolId={pool.id} matches={matches} initialScores={initialScores} />
-      <BottomNav poolId={pool.id} />
     </main>
   );
 }

@@ -130,7 +130,7 @@ function JoinForm() {
 export default function JoinPoolPage() {
   return (
     <main className="min-h-screen bg-bg">
-      <div className="mx-auto max-w-md px-4 pt-14 pb-24">
+      <div className="mx-auto max-w-lg px-4 pt-14 pb-16">
         <Link href="/" className="text-textMuted text-sm mb-6 inline-block">← Volver</Link>
         <h1 className="font-display text-3xl font-extrabold mb-1">Unirme a una Quiniela</h1>
         <p className="text-sm text-textMuted mb-6">Pregunta a tu admin por el código de 6 caracteres.</p>

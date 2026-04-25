@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { BottomNav } from "@/components/BottomNav";
 import { Card, Btn } from "@/components/primitives";
 import { getStoredUser, clearStoredUser } from "@/lib/session";
 
@@ -22,15 +21,20 @@ export default function PerfilPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-bg pb-24">
-      <div className="bg-gradient-to-b from-[#0F1624] to-bg pt-14 pb-6 px-4 text-center">
-        <div className="w-[72px] h-[72px] mx-auto mb-3 rounded-full bg-brand-greenDim border-2 border-brand-green flex items-center justify-center font-display text-2xl font-extrabold text-brand-green">
-          {me ? initials(me.name) : "?"}
+    <main className="min-h-screen bg-bg pb-24 md:pb-8">
+      {/* Full-width gradient header */}
+      <div className="bg-gradient-to-b from-[#0F1624] to-bg">
+        <div className="max-w-xl mx-auto pt-14 md:pt-8 pb-6 px-4 text-center">
+          <div className="w-[72px] h-[72px] mx-auto mb-3 rounded-full bg-brand-greenDim border-2 border-brand-green flex items-center justify-center font-display text-2xl font-extrabold text-brand-green">
+            {me ? initials(me.name) : "?"}
+          </div>
+          <div className="font-display text-2xl font-extrabold">Mi Perfil</div>
+          <div className="text-sm text-textMuted mt-1">{me?.name ?? "Invitado"}</div>
         </div>
-        <div className="font-display text-2xl font-extrabold">Mi Perfil</div>
-        <div className="text-sm text-textMuted mt-1">{me?.name ?? "Invitado"}</div>
       </div>
-      <div className="p-4 flex flex-col gap-3">
+
+      {/* Centered content column */}
+      <div className="max-w-xl mx-auto p-4 flex flex-col gap-3">
         <Card>
           <div className="p-4 grid grid-cols-3 gap-3">
             <Stat val={String(points?.total ?? 0)} label="Puntos" />
@@ -46,7 +50,6 @@ export default function PerfilPage() {
           Cerrar sesión
         </Btn>
       </div>
-      <BottomNav poolId={id as string} />
     </main>
   );
 }

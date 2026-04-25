@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { BottomNav } from "@/components/BottomNav";
 import { Card } from "@/components/primitives";
 import { loadPoolWithPlayers } from "@/lib/data";
 import { getServerClient } from "@/lib/supabase";
@@ -22,26 +21,30 @@ export default async function RankingPage({ params }: { params: { id: string } }
   const frozen = PAYMENTS_ENABLED && pool.plan === "free" && pool.payment_status === "none";
 
   return (
-    <main className="min-h-screen bg-bg pb-24">
-      <div className="bg-gradient-to-b from-[#0F1624] to-bg pt-14 pb-4 px-4">
-        <h2 className="font-display text-3xl font-extrabold">{pool.name}</h2>
-        <p className="text-sm text-textMuted mt-1 mb-4">{players.length} participantes</p>
-        {frozen && (
-          <Card glow>
-            <div className="p-3 text-xs">
-              <div className="flex items-center gap-1.5 text-amber font-semibold mb-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber" />
-                Ranking congelado después de grupos
+    <main className="min-h-screen bg-bg pb-24 md:pb-8">
+      {/* Full-width gradient header */}
+      <div className="bg-gradient-to-b from-[#0F1624] to-bg">
+        <div className="max-w-xl mx-auto pt-14 md:pt-8 pb-4 px-4">
+          <h2 className="font-display text-3xl font-extrabold">{pool.name}</h2>
+          <p className="text-sm text-textMuted mt-1">{players.length} participantes</p>
+          {frozen && (
+            <Card glow className="mt-4">
+              <div className="p-3 text-xs">
+                <div className="flex items-center gap-1.5 text-amber font-semibold mb-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber" />
+                  Ranking congelado después de grupos
+                </div>
+                <p className="text-textMuted">
+                  El admin puede desbloquear eliminatorias por $9 (Lemon Squeezy).
+                </p>
               </div>
-              <p className="text-textMuted">
-                El admin puede desbloquear eliminatorias por $9 (Lemon Squeezy).
-              </p>
-            </div>
-          </Card>
-        )}
+            </Card>
+          )}
+        </div>
       </div>
 
-      <div className="px-4 py-2">
+      {/* Centered content column */}
+      <div className="max-w-xl mx-auto px-4 py-2">
         <Card>
           {rows.length === 0 && (
             <div className="p-6 text-center text-sm text-textMuted">Aún no hay puntos. Entra luego del primer partido real.</div>
@@ -50,14 +53,12 @@ export default async function RankingPage({ params }: { params: { id: string } }
             const badge = i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : null;
             const badgeColor = badge === "gold" ? "text-gold" : badge === "silver" ? "text-silver" : "text-bronze";
             const badgeBg = badge === "gold" ? "bg-[rgba(255,215,0,0.15)]" : badge === "silver" ? "bg-[rgba(192,192,192,0.15)]" : badge === "bronze" ? "bg-[rgba(205,127,50,0.15)]" : "";
-            const isMe = false;
             return (
               <div
                 key={p.id}
                 className={[
                   "flex items-center gap-3 px-4 py-3",
                   i < rows.length - 1 ? "border-b border-border" : "",
-                  isMe ? "bg-brand-greenDim/40" : "",
                 ].join(" ")}
               >
                 {badge ? (
@@ -80,8 +81,6 @@ export default async function RankingPage({ params }: { params: { id: string } }
           })}
         </Card>
       </div>
-
-      <BottomNav poolId={pool.id} />
     </main>
   );
 }

@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { BottomNav } from "@/components/BottomNav";
 import { BracketClient } from "@/components/BracketClient";
 import { KnockoutGate } from "@/components/KnockoutGate";
 import { loadGroupMatches, loadPoolWithPlayers } from "@/lib/data";
@@ -20,14 +19,13 @@ export default async function BracketPage({ params }: { params: { id: string } }
     const allGroupsDone = (finishedGroupCount ?? 0) >= (totalGroupCount ?? 72);
 
     return (
-      <main className="min-h-screen bg-bg pb-24">
+      <main className="min-h-screen bg-bg pb-24 md:pb-8">
         <KnockoutGate
           poolId={pool.id}
           adminId={pool.admin_id}
           playerCount={players.length}
           allGroupsDone={allGroupsDone}
         />
-        <BottomNav poolId={pool.id} />
       </main>
     );
   }
@@ -36,7 +34,6 @@ export default async function BracketPage({ params }: { params: { id: string } }
   return (
     <main className="min-h-screen bg-bg">
       <BracketClient poolId={pool.id} groupMatches={groupMatches} />
-      <BottomNav poolId={pool.id} />
     </main>
   );
 }
