@@ -78,8 +78,37 @@ export function GruposClient({
     }
   }, [poolId]);
 
-  // Reset odds panel when switching groups
-  useEffect(() => { setGroupOdds(null); }, [currentGroup]);
+  // Auto-fetch odds whenever the active group or the logged-in user changes
+  useEffect(() => {
+    setGroupOdds(null);
+    if (!userId || globalLocked) return;
+    const groupMatches = byGroup[currentGroup] ?? [];
+    if (groupMatches.length === 0) return;
+
+    const controller = new AbortController();
+    setOddsLoading(true);
+    fetch("/api/ai-predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId,
+        poolId,
+        matches: groupMatches.map((m) => ({
+          id: m.id,
+          homeCode: m.home_team_code ?? "",
+          awayCode: m.away_team_code ?? "",
+        })),
+      }),
+      signal: controller.signal,
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (data?.odds) setGroupOdds(data.odds); })
+      .catch(() => {})
+      .finally(() => setOddsLoading(false));
+
+    return () => controller.abort();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentGroup, userId]);
 
   const byGroup = useMemo(() => {
     const m: Record<string, Match[]> = {};
@@ -271,28 +300,9 @@ export function GruposClient({
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {!globalLocked && (PAYMENTS_ENABLED ? !!aiAccess : true) && (
-                <button
-                  onClick={handleOddsFetch}
-                  disabled={oddsLoading}
-                  className="px-3 h-8 rounded-lg bg-brand-greenDim border border-brand-green/60 text-brand-green text-xs font-semibold flex items-center gap-1.5 transition-all disabled:opacity-50"
-                >
-                  {oddsLoading
-                    ? "Cargando…"
-                    : PAYMENTS_ENABLED && aiAccess
-                      ? aiAccess.hasAccess
-                        ? "📊 Pronóstico · Ilimitado"
-                        : !aiAccess.trialUsed
-                          ? "📊 Pronóstico · Gratis"
-                          : "📊 Pronóstico · $2.99"
-                      : "📊 Pronóstico"}
-                </button>
-              )}
-              <div className="text-right">
-                <div className="text-[10px] text-textMuted uppercase tracking-wide">{groupCompleted}/6</div>
-                <div className="font-display text-lg font-bold">{currentTeams.length}</div>
-              </div>
+            <div className="text-right">
+              <div className="text-[10px] text-textMuted uppercase tracking-wide">{groupCompleted}/6</div>
+              <div className="font-display text-lg font-bold">{currentTeams.length}</div>
             </div>
           </div>
         </Card>
