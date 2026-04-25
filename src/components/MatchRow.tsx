@@ -178,7 +178,7 @@ export function MatchRow({
   // Ambient gradient from each team's primary colour
   const hc = teamColor(match.homeCode);
   const ac = teamColor(match.awayCode);
-  const ambientBg = `linear-gradient(to right, ${hc}28 0%, #13151c 42%, #13151c 58%, ${ac}28 100%)`;
+  const ambientBg = `linear-gradient(to right, ${hc}12 0%, #0d0f14 40%, #0d0f14 60%, ${ac}12 100%)`;
 
   return (
     <div

@@ -216,19 +216,30 @@ export function GruposClient({
         <div className="flex gap-2">
           {GROUP_LETTERS.map((g) => {
             const activeG = g === currentGroup;
-            const done = (byGroup[g] ?? []).every((m) => scores[m.id]?.home !== "" && scores[m.id]?.away !== "");
+            const groupMatches = byGroup[g] ?? [];
+            const filled = (m: Match) => {
+              const s = scores[m.id];
+              return s !== undefined && s.home !== "" && s.away !== "";
+            };
+            const completedCount = groupMatches.filter(filled).length;
+            const done = groupMatches.length > 0 && completedCount === groupMatches.length;
+            const partial = completedCount > 0 && !done;
             return (
               <button
                 key={g}
                 onClick={() => setCurrentGroup(g)}
                 className={[
                   "shrink-0 px-4 h-10 rounded-full border text-sm font-semibold transition-all",
-                  activeG ? "bg-brand-greenDim border-brand-green text-brand-green"
-                          : done ? "bg-surface border-brand-green/40 text-white"
-                                 : "bg-surface border-border text-textMuted",
+                  activeG
+                    ? "bg-brand-greenDim border-brand-green text-brand-green"
+                    : done
+                      ? "bg-surface border-brand-green/40 text-white"
+                      : partial
+                        ? "bg-surface border-amber/40 text-amber"
+                        : "bg-surface border-border text-textMuted",
                 ].join(" ")}
               >
-                Grupo {g} {done && "✓"}
+                Grupo {g}{done ? " ✓" : partial ? ` ${completedCount}/${groupMatches.length}` : ""}
               </button>
             );
           })}
