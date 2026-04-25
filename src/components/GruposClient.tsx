@@ -292,6 +292,8 @@ export function GruposClient({
               awayName: m.away_team_name ?? "",
               homeFlag: m.home_team_flag ?? "",
               awayFlag: m.away_team_flag ?? "",
+              homeCode: m.home_team_code,
+              awayCode: m.away_team_code,
               date: m.match_date,
               stadium: m.stadium,
             }}
