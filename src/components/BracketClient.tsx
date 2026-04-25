@@ -168,6 +168,16 @@ export function BracketClient({
     sum + ph.pairs.filter((pr) => picks[`${ph.id}-${pr.slot}`]?.winner).length, 0);
   const allDone = completedTotal === 32;
 
+  // Current phase progress (drives the smart CTA button)
+  const currentPhasePicked = activeConfig.pairs.filter((pr) => picks[`${activePhase}-${pr.slot}`]?.winner).length;
+  const currentPhaseDone = activeConfig.total > 0 && currentPhasePicked === activeConfig.total;
+
+  // Next unlocked phase after the active one (for "Continúa con X →")
+  const activePhaseIdx = phases.findIndex((p) => p.id === activePhase);
+  const nextPhase = phases.slice(activePhaseIdx + 1).find(
+    (ph) => ph.pairs.length > 0 && ph.pairs.every((p) => p.home && p.away)
+  ) ?? null;
+
   // ── Autosave: persist completed picks whenever they change ────────────────
   useEffect(() => {
     if (!didInteract.current || !userId || !hydrated || locked) return;
@@ -212,6 +222,21 @@ export function BracketClient({
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [picks, userId, hydrated]);
+
+  // ── Auto-advance to the next unlocked phase when current phase is completed ──
+  useEffect(() => {
+    if (!hydrated || !didInteract.current) return;
+    const phIdx = phases.findIndex((p) => p.id === activePhase);
+    const ph = phases[phIdx];
+    const done = ph.total > 0 && ph.pairs.filter((pr) => picks[`${ph.id}-${pr.slot}`]?.winner).length === ph.total;
+    if (!done) return;
+    const next = phases.slice(phIdx + 1).find((n) => n.pairs.length > 0 && n.pairs.every((p) => p.home && p.away));
+    if (next) {
+      const nextDone = next.pairs.filter((pr) => picks[`${next.id}-${pr.slot}`]?.winner).length === next.total;
+      if (!nextDone) setActivePhase(next.id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picks]);
 
   // ── Score → winner: auto-detect from score; clear when tied (penalty needed) ─
   const updatePick = (phase: string, slot: number, patch: Partial<{ home: string; away: string; winner: string }>) => {
@@ -455,12 +480,24 @@ export function BracketClient({
           {saveState === "error"  && <span className="text-xs text-danger">Error al guardar — reintenta</span>}
         </div>
         <div className="px-4 pb-4">
-          <Btn variant="gradient" onClick={submitBracket} disabled={!allDone || submitting}>
-            {submitting ? "Enviando…" : allDone ? "Enviar Quiniela completa 🏆" : `Faltan ${32 - completedTotal} picks`}
+          <Btn
+            variant="gradient"
+            onClick={allDone ? submitBracket : currentPhaseDone && nextPhase ? () => setActivePhase(nextPhase.id) : undefined}
+            disabled={(!allDone && !currentPhaseDone) || submitting}
+          >
+            {submitting
+              ? "Enviando…"
+              : allDone
+                ? "Enviar Quiniela completa 🏆"
+                : currentPhaseDone && nextPhase
+                  ? `Continúa con ${nextPhase.label} →`
+                  : `Faltan ${activeConfig.total - currentPhasePicked} picks`}
           </Btn>
-          <p className="text-center text-[11px] text-textSub mt-2">
-            Al enviar, tu quiniela queda bloqueada permanentemente.
-          </p>
+          {allDone && (
+            <p className="text-center text-[11px] text-textSub mt-2">
+              Al enviar, tu quiniela queda bloqueada permanentemente.
+            </p>
+          )}
         </div>
       </div>
     </div>
