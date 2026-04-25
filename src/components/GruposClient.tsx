@@ -325,7 +325,7 @@ export function GruposClient({
       })}
 
       {/* Apply market suggestions */}
-      {groupOdds && !locked && (
+      {groupOdds && !globalLocked && (
         <div className="px-4 pb-3 flex items-center justify-between">
           <span className="text-xs text-textMuted">
             {groupOdds[0]?.source === "odds_api" ? "Casas de apuestas" : "Ranking FIFA"}
