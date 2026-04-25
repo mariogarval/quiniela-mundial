@@ -234,10 +234,10 @@ export function GruposClient({
         </div>
       </div>
 
-      {/* Group card */}
-      <div className="px-4 py-3">
+      {/* Group header card */}
+      <div className="px-4 pt-3 pb-2">
         <Card>
-          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+          <div className="px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-[10px] bg-brand-greenDim border border-brand-green flex items-center justify-center font-display text-xl font-extrabold text-brand-green">
                 {currentGroup}
@@ -275,65 +275,59 @@ export function GruposClient({
               </div>
             </div>
           </div>
-
-          {currentMatches.map((m) => {
-            const row = scores[m.id] ?? { home: "", away: "" };
-            const odds = groupOdds?.find((o) => o.matchId === m.id);
-            return (
-              <div key={m.id}>
-                <MatchRow
-                  match={{
-                    id: m.id,
-                    homeName: m.home_team_name ?? "",
-                    awayName: m.away_team_name ?? "",
-                    homeFlag: m.home_team_flag ?? "",
-                    awayFlag: m.away_team_flag ?? "",
-                    date: m.match_date,
-                    stadium: m.stadium,
-                  }}
-                  score={row}
-                  onScore={(side, val) => setScore(m.id, side, val)}
-                  locked={locked}
-                />
-                {odds && (
-                  <OddsPanel
-                    homeName={m.home_team_name ?? ""}
-                    awayName={m.away_team_name ?? ""}
-                    odds={odds}
-                  />
-                )}
-              </div>
-            );
-          })}
-
-          {/* Apply odds button */}
-          {groupOdds && !locked && (
-            <div className="px-4 py-3 border-t border-border flex items-center justify-between">
-              <span className="text-xs text-textMuted">
-                Pronóstico del mercado · {groupOdds[0]?.source === "odds_api" ? "Casas de apuestas" : "Ranking FIFA"}
-              </span>
-              <button
-                onClick={applyOdds}
-                className="px-3 h-8 rounded-lg border border-brand-green/60 text-brand-green text-xs font-semibold"
-              >
-                Aplicar sugerencias
-              </button>
-            </div>
-          )}
-
-          {/* Paywall */}
-          {PAYMENTS_ENABLED && aiAccess?.trialUsed && !aiAccess?.hasAccess && (
-            <div className="mx-4 my-3 rounded-xl border border-brand-green/40 bg-brand-greenDim p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">📊</span>
-                <span className="font-semibold text-sm">Desbloquea pronósticos para todo el torneo</span>
-              </div>
-              <p className="text-xs text-textMuted mb-3 pl-7">Probabilidades del mercado para los 12 grupos · Pago único de $2.99</p>
-              <Btn variant="gradient" onClick={handleOddsUnlock}>Desbloquear · $2.99</Btn>
-            </div>
-          )}
         </Card>
       </div>
+
+      {/* Match cards — one card per game */}
+      {currentMatches.map((m) => {
+        const row = scores[m.id] ?? { home: "", away: "" };
+        const odds = groupOdds?.find((o) => o.matchId === m.id);
+        return (
+          <MatchRow
+            key={m.id}
+            match={{
+              id: m.id,
+              homeName: m.home_team_name ?? "",
+              awayName: m.away_team_name ?? "",
+              homeFlag: m.home_team_flag ?? "",
+              awayFlag: m.away_team_flag ?? "",
+              date: m.match_date,
+              stadium: m.stadium,
+            }}
+            score={row}
+            onScore={(side, val) => setScore(m.id, side, val)}
+            locked={locked}
+            odds={odds}
+          />
+        );
+      })}
+
+      {/* Apply market suggestions */}
+      {groupOdds && !locked && (
+        <div className="px-4 pb-3 flex items-center justify-between">
+          <span className="text-xs text-textMuted">
+            {groupOdds[0]?.source === "odds_api" ? "Casas de apuestas" : "Ranking FIFA"}
+          </span>
+          <button
+            onClick={applyOdds}
+            className="px-3 h-8 rounded-lg border border-brand-green/60 text-brand-green text-xs font-semibold"
+          >
+            Aplicar sugerencias
+          </button>
+        </div>
+      )}
+
+      {/* Paywall */}
+      {PAYMENTS_ENABLED && aiAccess?.trialUsed && !aiAccess?.hasAccess && (
+        <div className="mx-4 mb-3 rounded-xl border border-brand-green/40 bg-brand-greenDim p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">📊</span>
+            <span className="font-semibold text-sm">Desbloquea pronósticos para todo el torneo</span>
+          </div>
+          <p className="text-xs text-textMuted mb-3 pl-7">Probabilidades del mercado para los 12 grupos · Pago único de $2.99</p>
+          <Btn variant="gradient" onClick={handleOddsUnlock}>Desbloquear · $2.99</Btn>
+        </div>
+      )}
 
       {/* Toggle standings */}
       <div className="px-4 pb-3">
