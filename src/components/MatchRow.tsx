@@ -94,7 +94,7 @@ function ScoreStepper({
       className={[
         "w-12 rounded-xl overflow-hidden flex flex-col select-none",
         filled
-          ? "border border-brand-green/50 bg-brand-greenDim"
+          ? "border border-white/[0.18] bg-white/[0.07]"
           : "border border-white/10 bg-white/5",
       ].join(" ")}
     >
@@ -187,8 +187,11 @@ export function MatchRow({
     >
       {/* Match time */}
       {timeLabel && (
-        <div className="px-4 pt-3 pb-0">
+        <div className="px-4 pt-3 pb-0 flex items-center gap-2">
           <span className="text-[11px] text-white/35 font-medium tabular-nums">{timeLabel}</span>
+          {locked && (
+            <span className="text-[10px] text-white/20 font-medium tracking-wide">· Cerrado</span>
+          )}
         </div>
       )}
 

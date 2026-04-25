@@ -36,7 +36,14 @@ export function GruposClient({
   const [aiAccess, setAiAccess] = useState<{ hasAccess: boolean; trialUsed: boolean } | null>(null);
   const [groupOdds, setGroupOdds] = useState<MatchOdds[] | null>(null);
   const [oddsLoading, setOddsLoading] = useState(false);
-  const locked = useMemo(() => new Date(LOCK_DATE_ISO).getTime() <= Date.now(), []);
+  // Global lock: after tournament group-stage deadline, nothing is editable
+  const globalLocked = useMemo(() => new Date(LOCK_DATE_ISO).getTime() <= Date.now(), []);
+  // Per-match lock: freeze each match 6 hours before its own kickoff
+  const isMatchLocked = (matchDate: string | null | undefined): boolean => {
+    if (globalLocked) return true;
+    if (!matchDate) return false;
+    return new Date(matchDate).getTime() - 6 * 60 * 60 * 1000 <= Date.now();
+  };
   const pendingRef = useRef<Record<string, { home: string; away: string }>>({});
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -92,7 +99,7 @@ export function GruposClient({
   const currentGroupDone = groupCompleted === currentMatches.length && currentMatches.length > 0;
 
   const flush = async () => {
-    if (!userId || locked) return;
+    if (!userId || globalLocked) return;
     const pending = pendingRef.current;
     pendingRef.current = {};
     const payload = Object.entries(pending)
@@ -119,7 +126,8 @@ export function GruposClient({
   };
 
   const setScore = (matchId: string, side: "home" | "away", value: string) => {
-    if (locked) return;
+    const matchDate = matches.find((m) => m.id === matchId)?.match_date;
+    if (isMatchLocked(matchDate)) return;
     setScores((prev) => {
       const next = { ...prev, [matchId]: { ...(prev[matchId] ?? { home: "", away: "" }), [side]: value } };
       pendingRef.current[matchId] = next[matchId];
@@ -147,7 +155,7 @@ export function GruposClient({
   };
 
   const handleOddsFetch = async () => {
-    if (!userId || locked) return;
+    if (!userId || globalLocked) return;
     track("odds_panel_opened", { pool_id: poolId, group: currentGroup });
     setOddsLoading(true);
     try {
@@ -177,7 +185,7 @@ export function GruposClient({
   };
 
   const applyOdds = () => {
-    if (!groupOdds || locked) return;
+    if (!groupOdds || globalLocked) return;
     track("odds_applied", { pool_id: poolId, group: currentGroup, source: groupOdds[0]?.source });
     for (const o of groupOdds) {
       setScore(o.matchId, "home", String(o.suggestedHome));
@@ -264,7 +272,7 @@ export function GruposClient({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {!locked && (PAYMENTS_ENABLED ? !!aiAccess : true) && (
+              {!globalLocked && (PAYMENTS_ENABLED ? !!aiAccess : true) && (
                 <button
                   onClick={handleOddsFetch}
                   disabled={oddsLoading}
@@ -310,7 +318,7 @@ export function GruposClient({
             }}
             score={row}
             onScore={(side, val) => setScore(m.id, side, val)}
-            locked={locked}
+            locked={isMatchLocked(m.match_date)}
             odds={odds}
           />
         );
