@@ -67,7 +67,7 @@ export type MatchRowData = {
 };
 
 // ── Score stepper: + / value / − in one unified box ──────────────────────────
-function ScoreStepper({
+export function ScoreStepper({
   value,
   onChange,
   locked,

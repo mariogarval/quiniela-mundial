@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, Btn, Flag, ScoreInput, ProgressBar } from "./primitives";
+import { Btn, Flag, ProgressBar } from "./primitives";
+import { ScoreStepper } from "./MatchRow";
 import { GROUPS, GROUP_LETTERS, LOCK_DATE_ISO } from "@/lib/constants";
 import { buildR32, nextRound, thirdPlacePair, type BracketNodePick } from "@/lib/bracket";
 import { computeStandings } from "@/lib/standings";
@@ -60,7 +61,7 @@ export function BracketClient({
     })();
   }, [poolId, router]);
 
-  // Build R32 from group predictions
+  // ── Build bracket rounds from group predictions ───────────────────────────
   const r32Pairs = useMemo<Pair[]>(() => {
     if (!hydrated) return [];
     const standings: Record<string, ReturnType<typeof computeStandings>> = {};
@@ -74,8 +75,7 @@ export function BracketClient({
         groupScores,
       );
     }
-    const pairs = buildR32(standings);
-    return pairs.map((p) => ({ slot: p.slot, home: p.home ?? null, away: p.away ?? null }));
+    return buildR32(standings).map((p) => ({ slot: p.slot, home: p.home ?? null, away: p.away ?? null }));
   }, [hydrated, groupMatches, groupScores]);
 
   const r32Picks = useMemo<BracketNodePick[]>(() =>
@@ -91,8 +91,7 @@ export function BracketClient({
   [r32Pairs, picks]);
 
   const r16Pairs = useMemo<Pair[]>(() => {
-    const complete = r32Picks.filter((p) => p.winnerCode).length === r32Picks.length && r32Picks.length === 16;
-    if (!complete) return [];
+    if (r32Picks.filter((p) => p.winnerCode).length < r32Picks.length || r32Picks.length < 16) return [];
     return nextRound(r32Picks, "r32").map((n) => ({ slot: n.slot, home: n.home ?? null, away: n.away ?? null }));
   }, [r32Picks]);
 
@@ -109,8 +108,7 @@ export function BracketClient({
   [r16Pairs, picks]);
 
   const qfPairs = useMemo<Pair[]>(() => {
-    const complete = r16Picks.length === 8 && r16Picks.every((p) => p.winnerCode);
-    if (!complete) return [];
+    if (r16Picks.length < 8 || !r16Picks.every((p) => p.winnerCode)) return [];
     return nextRound(r16Picks, "r16").map((n) => ({ slot: n.slot, home: n.home ?? null, away: n.away ?? null }));
   }, [r16Picks]);
 
@@ -127,8 +125,7 @@ export function BracketClient({
   [qfPairs, picks]);
 
   const sfPairs = useMemo<Pair[]>(() => {
-    const complete = qfPicks.length === 4 && qfPicks.every((p) => p.winnerCode);
-    if (!complete) return [];
+    if (qfPicks.length < 4 || !qfPicks.every((p) => p.winnerCode)) return [];
     return nextRound(qfPicks, "qf").map((n) => ({ slot: n.slot, home: n.home ?? null, away: n.away ?? null }));
   }, [qfPicks]);
 
@@ -145,53 +142,55 @@ export function BracketClient({
   [sfPairs, picks]);
 
   const thirdPair = useMemo<Pair[]>(() => {
-    const complete = sfPicks.length === 2 && sfPicks.every((p) => p.winnerCode);
-    if (!complete) return [];
+    if (sfPicks.length < 2 || !sfPicks.every((p) => p.winnerCode)) return [];
     const t = thirdPlacePair(sfPicks);
     return t ? [{ slot: t.slot, home: t.home ?? null, away: t.away ?? null }] : [];
   }, [sfPicks]);
 
   const finalPair = useMemo<Pair[]>(() => {
-    const complete = sfPicks.length === 2 && sfPicks.every((p) => p.winnerCode);
-    if (!complete) return [];
+    if (sfPicks.length < 2 || !sfPicks.every((p) => p.winnerCode)) return [];
     return nextRound(sfPicks, "sf").map((n) => ({ slot: n.slot, home: n.home ?? null, away: n.away ?? null }));
   }, [sfPicks]);
 
   const phases = [
-    { id: "r32" as const, label: "R32", pairs: r32Pairs, total: 16 },
-    { id: "r16" as const, label: "Octavos", pairs: r16Pairs, total: 8 },
-    { id: "qf" as const, label: "Cuartos", pairs: qfPairs, total: 4 },
-    { id: "sf" as const, label: "Semis", pairs: sfPairs, total: 2 },
-    { id: "third" as const, label: "3er lugar", pairs: thirdPair, total: 1 },
-    { id: "final" as const, label: "Final", pairs: finalPair, total: 1 },
+    { id: "r32" as const,    label: "R32",       pairs: r32Pairs,  total: 16 },
+    { id: "r16" as const,    label: "Octavos",   pairs: r16Pairs,  total: 8 },
+    { id: "qf" as const,     label: "Cuartos",   pairs: qfPairs,   total: 4 },
+    { id: "sf" as const,     label: "Semis",     pairs: sfPairs,   total: 2 },
+    { id: "third" as const,  label: "3er lugar", pairs: thirdPair, total: 1 },
+    { id: "final" as const,  label: "Final",     pairs: finalPair, total: 1 },
   ];
   const activeConfig = phases.find((p) => p.id === activePhase)!;
 
-  const completedTotal = phases.reduce((sum, ph) => {
-    return sum + ph.pairs.filter((pr) => picks[`${ph.id}-${pr.slot}`]?.winner).length;
-  }, 0);
-  const maxTotal = 32;
-  const allDone = completedTotal === maxTotal;
+  const completedTotal = phases.reduce((sum, ph) =>
+    sum + ph.pairs.filter((pr) => picks[`${ph.id}-${pr.slot}`]?.winner).length, 0);
+  const allDone = completedTotal === 32;
 
+  // ── Score → winner: auto-detect from score; clear when tied (penalty needed) ─
   const updatePick = (phase: string, slot: number, patch: Partial<{ home: string; away: string; winner: string }>) => {
     if (locked) return;
     const key = `${phase}-${slot}`;
     setPicks((prev) => {
-      const next = { ...prev, [key]: { ...(prev[key] ?? { home: "", away: "", winner: "" }), ...patch } };
-      const st = next[key];
-      if (st.home !== "" && st.away !== "") {
-        const h = Number(st.home), a = Number(st.away);
-        const pair = findPair(phase, slot, { r32Pairs, r16Pairs, qfPairs, sfPairs, thirdPair, finalPair });
-        if (pair?.home && pair?.away) {
-          if (h > a) st.winner = pair.home.code;
-          else if (a > h) st.winner = pair.away.code;
+      const merged = { ...(prev[key] ?? { home: "", away: "", winner: "" }), ...patch };
+
+      // Only auto-derive winner when a score value changed (not when winner was explicitly patched)
+      if (!("winner" in patch)) {
+        if (merged.home !== "" && merged.away !== "") {
+          const h = Number(merged.home), a = Number(merged.away);
+          const pair = findPair(phase, slot, { r32Pairs, r16Pairs, qfPairs, sfPairs, thirdPair, finalPair });
+          if (pair?.home && pair?.away) {
+            if (h > a) merged.winner = pair.home.code;
+            else if (a > h) merged.winner = pair.away.code;
+            else merged.winner = ""; // Tied → must pick penalty winner below
+          }
+        } else {
+          merged.winner = ""; // Incomplete score → no winner yet
         }
       }
-      return next;
+
+      return { ...prev, [key]: merged };
     });
   };
-
-  const setWinner = (phase: string, slot: number, code: string) => updatePick(phase, slot, { winner: code });
 
   const submitBracket = async () => {
     if (!userId || !allDone || submitting) return;
@@ -210,14 +209,10 @@ export function BracketClient({
         .map(([phase, p]) => {
           const s = picks[`${phase}-${p.slot}`];
           return {
-            phase,
-            slot: p.slot,
-            home_team_code: p.home!.code,
-            away_team_code: p.away!.code,
-            home_team_name: p.home!.name,
-            away_team_name: p.away!.name,
-            home_team_flag: p.home!.flag,
-            away_team_flag: p.away!.flag,
+            phase, slot: p.slot,
+            home_team_code: p.home!.code, away_team_code: p.away!.code,
+            home_team_name: p.home!.name, away_team_name: p.away!.name,
+            home_team_flag: p.home!.flag, away_team_flag: p.away!.flag,
             predicted_home_score: Number(s?.home ?? 0),
             predicted_away_score: Number(s?.away ?? 0),
             winner_code: s?.winner ?? p.home!.code,
@@ -237,145 +232,186 @@ export function BracketClient({
     }
   };
 
+  // ── Loading / guard states ─────────────────────────────────────────────────
   if (!hydrated) {
     return <div className="px-4 pt-20 text-center text-textMuted">Cargando tu llave…</div>;
   }
 
-  const groupsDone = Object.keys(groupScores).length >= 72;
-  if (!groupsDone) {
+  if (Object.keys(groupScores).length < 72) {
     return (
-      <div className="px-4 pt-20">
-        <Card>
-          <div className="p-5 text-center">
-            <div className="text-4xl mb-3">⚽</div>
-            <h3 className="font-display text-xl font-bold mb-2">Primero completa tus grupos</h3>
-            <p className="text-sm text-textMuted mb-4">Tu llave se construye a partir de tus predicciones de fase de grupos.</p>
-            <Btn variant="gradient" onClick={() => router.push(`/pool/${poolId}/grupos`)}>
-              Ir a Grupos
-            </Btn>
-          </div>
-        </Card>
+      <div className="max-w-xl mx-auto px-4 pt-20">
+        <div className="rounded-2xl border border-border bg-surface p-6 text-center">
+          <div className="text-4xl mb-3">⚽</div>
+          <h3 className="font-display text-xl font-bold mb-2">Primero completa tus grupos</h3>
+          <p className="text-sm text-textMuted mb-4">Tu llave se construye a partir de tus predicciones de fase de grupos.</p>
+          <Btn variant="gradient" onClick={() => router.push(`/pool/${poolId}/grupos`)}>
+            Ir a Grupos
+          </Btn>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="pb-24">
-      <div className="px-4 pt-14 pb-2">
-        <span className="font-display text-xs font-semibold text-brand-green uppercase tracking-[0.2em]">
-          Basado en tus predicciones
-        </span>
-        <h2 className="font-display text-3xl font-extrabold mt-1">
-          Tu Llave — {phaseDisplayName(activePhase)}
-        </h2>
-      </div>
-
-      <ProgressBar value={completedTotal} max={maxTotal} label="Llaves completas" />
-
-      {/* Phase tabs */}
-      <div className="px-4 pt-3 pb-1 overflow-x-auto scroll-hide">
-        <div className="flex gap-2">
-          {phases.map((ph) => {
-            const isActive = ph.id === activePhase;
-            const unlocked = ph.pairs.length > 0 && ph.pairs.every((p) => p.home && p.away);
-            const complete = ph.pairs.filter((pr) => picks[`${ph.id}-${pr.slot}`]?.winner).length === ph.total;
-            return (
-              <button
-                key={ph.id}
-                onClick={() => unlocked && setActivePhase(ph.id)}
-                disabled={!unlocked}
-                className={[
-                  "shrink-0 px-4 h-10 rounded-full border text-sm font-semibold transition-all",
-                  isActive ? "bg-brand-greenDim border-brand-green text-brand-green"
-                           : unlocked ? "bg-surface border-border text-white"
-                                      : "bg-surface border-border text-textSub opacity-60",
-                ].join(" ")}
-              >
-                {ph.label} {complete && "✓"}
-              </button>
-            );
-          })}
+    <div className="pb-24 md:pb-8">
+      <div className="max-w-xl mx-auto">
+        {/* Header */}
+        <div className="px-4 pt-14 md:pt-8 pb-2">
+          <span className="font-display text-xs font-semibold text-brand-green uppercase tracking-[0.2em]">
+            Basado en tus predicciones
+          </span>
+          <h2 className="font-display text-3xl font-extrabold mt-1">
+            Tu Llave — {phaseDisplayName(activePhase)}
+          </h2>
         </div>
-      </div>
 
-      {/* Pairs */}
-      <div className="px-4 py-3 flex flex-col gap-2.5">
-        {activeConfig.pairs.length === 0 && (
-          <Card>
-            <div className="p-5 text-center text-sm text-textMuted">
+        <ProgressBar value={completedTotal} max={32} label="Llaves completas" />
+
+        {/* Phase tabs */}
+        <div className="px-4 pt-3 pb-1 overflow-x-auto scroll-hide">
+          <div className="flex gap-2">
+            {phases.map((ph) => {
+              const isActive = ph.id === activePhase;
+              const unlocked = ph.pairs.length > 0 && ph.pairs.every((p) => p.home && p.away);
+              const done = ph.pairs.filter((pr) => picks[`${ph.id}-${pr.slot}`]?.winner).length === ph.total;
+              const partial = !done && ph.pairs.some((pr) => picks[`${ph.id}-${pr.slot}`]?.winner);
+              return (
+                <button
+                  key={ph.id}
+                  onClick={() => unlocked && setActivePhase(ph.id)}
+                  disabled={!unlocked}
+                  className={[
+                    "shrink-0 px-4 h-10 rounded-full border text-sm font-semibold transition-all",
+                    isActive
+                      ? "bg-brand-greenDim border-brand-green text-brand-green"
+                      : done
+                        ? "bg-surface border-brand-green/40 text-white"
+                        : partial
+                          ? "bg-surface border-amber/40 text-amber"
+                          : unlocked
+                            ? "bg-surface border-border text-textMuted"
+                            : "bg-surface border-border text-textSub opacity-40",
+                  ].join(" ")}
+                >
+                  {ph.label}{done ? " ✓" : ""}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Match cards */}
+        <div className="py-3">
+          {activeConfig.pairs.length === 0 && (
+            <div className="mx-4 rounded-2xl border border-border bg-surface p-5 text-center text-sm text-textMuted">
               Completa la fase anterior para desbloquear {activeConfig.label.toLowerCase()}.
             </div>
-          </Card>
-        )}
-        {activeConfig.pairs.map((p) => {
-          if (!p.home || !p.away) return null;
-          const pick = picks[`${activePhase}-${p.slot}`] ?? { home: "", away: "", winner: "" };
-          const isDone = !!pick.winner;
-          return (
-            <Card key={p.slot} className={isDone ? "border-brand-green/70" : ""}>
-              <div className="px-3.5 py-2.5 border-b border-border flex items-center justify-between">
-                <span className="text-[11px] text-textMuted uppercase tracking-widest">
-                  {activeConfig.label} — Partido {p.slot + 1}
-                </span>
-                {isDone && (
-                  <div className="flex items-center gap-1">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                      <path d="M20 6L9 17l-5-5" stroke="#00E676" strokeWidth="2.5" strokeLinecap="round" />
-                    </svg>
-                    <span className="text-[11px] text-brand-green font-semibold">Pickeado</span>
+          )}
+          {activeConfig.pairs.map((p) => {
+            if (!p.home || !p.away) return null;
+            const pick = picks[`${activePhase}-${p.slot}`] ?? { home: "", away: "", winner: "" };
+            const isDone = !!pick.winner;
+            const isTied = pick.home !== "" && pick.away !== "" && Number(pick.home) === Number(pick.away);
+
+            return (
+              <div
+                key={p.slot}
+                className="mx-4 mb-3 rounded-2xl overflow-hidden border border-white/[0.08] bg-[#0d0f14]"
+              >
+                {/* Card header */}
+                <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center justify-between">
+                  <span className="text-[11px] text-white/30 uppercase tracking-widest font-medium">
+                    {activeConfig.label} — Partido {p.slot + 1}
+                  </span>
+                  {isDone && (
+                    <div className="flex items-center gap-1">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                        <path d="M20 6L9 17l-5-5" stroke="#00E676" strokeWidth="2.5" strokeLinecap="round" />
+                      </svg>
+                      <span className="text-[11px] text-brand-green font-semibold">Pickeado</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Teams + steppers (same layout as group stage MatchRow) */}
+                <div className="flex items-center px-4 py-4 gap-3">
+                  <div className="flex-1 flex flex-col items-center gap-2 min-w-0">
+                    <span style={{ fontSize: 36, lineHeight: 1 }}>{p.home.flag}</span>
+                    <span className="text-xs font-semibold text-center leading-tight text-white line-clamp-2 w-full">
+                      {p.home.name}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <ScoreStepper
+                      value={pick.home}
+                      onChange={(v) => updatePick(activePhase, p.slot, { home: v })}
+                      locked={locked}
+                    />
+                    <ScoreStepper
+                      value={pick.away}
+                      onChange={(v) => updatePick(activePhase, p.slot, { away: v })}
+                      locked={locked}
+                    />
+                  </div>
+
+                  <div className="flex-1 flex flex-col items-center gap-2 min-w-0">
+                    <span style={{ fontSize: 36, lineHeight: 1 }}>{p.away.flag}</span>
+                    <span className="text-xs font-semibold text-center leading-tight text-white line-clamp-2 w-full">
+                      {p.away.name}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Penalty winner selector — only when tied */}
+                {isTied && !locked && (
+                  <div className="px-4 pb-4">
+                    <p className="text-[11px] text-amber text-center mb-2.5">
+                      Sin empate en eliminatorias — ¿quién gana en penales?
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => updatePick(activePhase, p.slot, { winner: p.home!.code })}
+                        className={[
+                          "flex-1 h-10 rounded-xl border text-sm font-semibold transition-colors",
+                          pick.winner === p.home!.code
+                            ? "bg-brand-greenDim border-brand-green text-white"
+                            : "bg-white/5 border-white/10 text-textMuted hover:text-white",
+                        ].join(" ")}
+                      >
+                        {p.home.name}
+                      </button>
+                      <button
+                        onClick={() => updatePick(activePhase, p.slot, { winner: p.away!.code })}
+                        className={[
+                          "flex-1 h-10 rounded-xl border text-sm font-semibold transition-colors",
+                          pick.winner === p.away!.code
+                            ? "bg-brand-greenDim border-brand-green text-white"
+                            : "bg-white/5 border-white/10 text-textMuted hover:text-white",
+                        ].join(" ")}
+                      >
+                        {p.away.name}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
-              <div className="p-3.5 flex items-center gap-2">
-                <button
-                  onClick={() => setWinner(activePhase, p.slot, p.home!.code)}
-                  disabled={locked}
-                  className={[
-                    "flex-1 flex items-center gap-2 justify-end px-2 py-2 rounded-lg transition-colors",
-                    pick.winner === p.home!.code ? "bg-brand-greenDim" : "",
-                  ].join(" ")}
-                >
-                  <span className="text-sm font-semibold text-right">{p.home!.name}</span>
-                  <Flag emoji={p.home!.flag} size={22} />
-                </button>
-                <div className="flex items-center gap-1.5">
-                  <ScoreInput value={pick.home} onChange={(v) => updatePick(activePhase, p.slot, { home: v })} locked={locked} />
-                  <span className="font-display text-lg text-textSub">—</span>
-                  <ScoreInput value={pick.away} onChange={(v) => updatePick(activePhase, p.slot, { away: v })} locked={locked} />
-                </div>
-                <button
-                  onClick={() => setWinner(activePhase, p.slot, p.away!.code)}
-                  disabled={locked}
-                  className={[
-                    "flex-1 flex items-center gap-2 px-2 py-2 rounded-lg transition-colors",
-                    pick.winner === p.away!.code ? "bg-brand-greenDim" : "",
-                  ].join(" ")}
-                >
-                  <Flag emoji={p.away!.flag} size={22} />
-                  <span className="text-sm font-semibold">{p.away!.name}</span>
-                </button>
-              </div>
-              {pick.home !== "" && pick.away !== "" && Number(pick.home) === Number(pick.away) && (
-                <div className="px-4 pb-3 text-[11px] text-amber text-center">
-                  En eliminatoria no hay empate — toca el ganador en penales.
-                </div>
-              )}
-            </Card>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
 
-      <div className="px-4 pb-2">
-        {saveState === "error" && <div className="text-xs text-danger">Error al enviar — reintenta</div>}
-      </div>
-
-      <div className="px-4">
-        <Btn variant="gradient" onClick={submitBracket} disabled={!allDone || submitting}>
-          {submitting ? "Enviando…" : allDone ? "Enviar Quiniela completa 🏆" : `Faltan ${maxTotal - completedTotal} picks`}
-        </Btn>
-        <p className="text-center text-[11px] text-textSub mt-2">
-          Al enviar, tu quiniela queda bloqueada permanentemente.
-        </p>
+        {/* Submit */}
+        {saveState === "error" && (
+          <div className="px-4 pb-2 text-xs text-danger">Error al enviar — reintenta</div>
+        )}
+        <div className="px-4 pb-4">
+          <Btn variant="gradient" onClick={submitBracket} disabled={!allDone || submitting}>
+            {submitting ? "Enviando…" : allDone ? "Enviar Quiniela completa 🏆" : `Faltan ${32 - completedTotal} picks`}
+          </Btn>
+          <p className="text-center text-[11px] text-textSub mt-2">
+            Al enviar, tu quiniela queda bloqueada permanentemente.
+          </p>
+        </div>
       </div>
     </div>
   );
