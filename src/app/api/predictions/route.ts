@@ -2,8 +2,13 @@ import { NextResponse } from "next/server";
 import { getServerClient } from "@/lib/supabase";
 
 async function getGroupEditDeadline(sb: ReturnType<typeof getServerClient>): Promise<Date | null> {
-  const { data } = await sb.from("tournament_state").select("group_edit_deadline").eq("id", 1).maybeSingle();
-  return data?.group_edit_deadline ? new Date(data.group_edit_deadline) : null;
+  try {
+    const { data, error } = await sb.from("tournament_state").select("group_edit_deadline").eq("id", 1).maybeSingle();
+    if (error || !data?.group_edit_deadline) return null;
+    return new Date(data.group_edit_deadline);
+  } catch {
+    return null; // column may not exist yet (migration pending)
+  }
 }
 
 // GET /api/predictions?userId=...

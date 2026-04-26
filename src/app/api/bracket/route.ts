@@ -2,8 +2,13 @@ import { NextResponse } from "next/server";
 import { getServerClient } from "@/lib/supabase";
 
 async function getBracketEditDeadline(sb: ReturnType<typeof getServerClient>): Promise<Date | null> {
-  const { data } = await sb.from("tournament_state").select("bracket_edit_deadline").eq("id", 1).maybeSingle();
-  return data?.bracket_edit_deadline ? new Date(data.bracket_edit_deadline) : null;
+  try {
+    const { data, error } = await sb.from("tournament_state").select("bracket_edit_deadline").eq("id", 1).maybeSingle();
+    if (error || !data?.bracket_edit_deadline) return null;
+    return new Date(data.bracket_edit_deadline);
+  } catch {
+    return null; // column may not exist yet (migration pending)
+  }
 }
 
 export async function POST(req: Request) {
