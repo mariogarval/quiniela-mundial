@@ -34,6 +34,7 @@ export function GruposClient({
   const [scores, setScores] = useState<Scores>(initialScores);
   const [showStandings, setShowStandings] = useState(true);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [aiAccess, setAiAccess] = useState<{ hasAccess: boolean; trialUsed: boolean } | null>(null);
   const [groupOdds, setGroupOdds] = useState<MatchOdds[] | null>(null);
@@ -147,17 +148,24 @@ export function GruposClient({
       }));
     if (payload.length === 0) { setSaveState("idle"); return; }
     setSaveState("saving");
+    setSaveError(null);
+    let errMsg: string | null = null;
     try {
       const res = await fetch("/api/predictions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, predictions: payload }),
       });
-      if (!res.ok) throw new Error("save failed");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        errMsg = (errData as { error?: string }).error ?? `HTTP ${res.status}`;
+        throw new Error(errMsg);
+      }
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 1200);
-    } catch {
+    } catch (err) {
       setSaveState("error");
+      setSaveError(errMsg ?? (err instanceof Error ? err.message : "save failed"));
     }
   };
 
@@ -406,7 +414,7 @@ export function GruposClient({
         <div className="flex items-center gap-2 text-xs h-5">
           {saveState === "saving" && <><span className="w-1.5 h-1.5 rounded-full bg-amber animate-pulseDot" /><span className="text-textMuted">{t("saving")}</span></>}
           {saveState === "saved" && <><span className="w-1.5 h-1.5 rounded-full bg-brand-green" /><span className="text-brand-green">{t("saved")}</span></>}
-          {saveState === "error" && <span className="text-danger">{t("error")}</span>}
+          {saveState === "error" && <span className="text-danger">{saveError ? `Error: ${saveError}` : t("error")}</span>}
         </div>
       </div>
 
