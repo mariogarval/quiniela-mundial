@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, Btn, Flag, ProgressBar } from "./primitives";
 import { MatchRow } from "./MatchRow";
 import { StandingsTable } from "./StandingsTable";
-import { GROUPS, GROUP_LETTERS, LOCK_DATE_ISO } from "@/lib/constants";
+import { GROUPS, GROUP_LETTERS } from "@/lib/constants";
 import type { Match } from "@/types";
 import { getStoredUser } from "@/lib/session";
 import { PAYMENTS_ENABLED } from "@/lib/flags";
@@ -28,6 +29,7 @@ export function GruposClient({
   matches: Match[];
   initialScores: Scores;
 }) {
+  const t = useTranslations("groups");
   const [currentGroup, setCurrentGroup] = useState<string>("A");
   const [scores, setScores] = useState<Scores>(initialScores);
   const [showStandings, setShowStandings] = useState(true);
@@ -36,8 +38,10 @@ export function GruposClient({
   const [aiAccess, setAiAccess] = useState<{ hasAccess: boolean; trialUsed: boolean } | null>(null);
   const [groupOdds, setGroupOdds] = useState<MatchOdds[] | null>(null);
   const [oddsLoading, setOddsLoading] = useState(false);
-  // Global lock: after tournament group-stage deadline, nothing is editable
-  const globalLocked = useMemo(() => new Date(LOCK_DATE_ISO).getTime() <= Date.now(), []);
+  const [groupDeadline, setGroupDeadline] = useState<Date | null>(null);
+
+  // Global lock: after group-stage edit deadline, nothing is editable
+  const globalLocked = useMemo(() => groupDeadline ? new Date() >= groupDeadline : false, [groupDeadline]);
   // Per-match lock: freeze each match 6 hours before its own kickoff
   const isMatchLocked = (matchDate: string | null | undefined): boolean => {
     if (globalLocked) return true;
@@ -51,6 +55,9 @@ export function GruposClient({
     const u = getStoredUser();
     setUserId(u.id);
     track("grupos_opened", { pool_id: poolId });
+    fetch("/api/deadlines").then(r => r.json()).then(d => {
+      if (d.groupEditDeadline) setGroupDeadline(new Date(d.groupEditDeadline));
+    });
     if (u.id) {
       const fetches: Promise<unknown>[] = [
         fetch(`/api/predictions?userId=${u.id}`).then((r) => r.json()),
@@ -242,11 +249,21 @@ export function GruposClient({
     <div className="pb-24 md:pb-8">
       <div className="max-w-xl mx-auto">
       <div className="px-4 pt-14 md:pt-8 pb-2">
-        <span className="font-display text-xs font-semibold text-brand-green uppercase tracking-[0.2em]">Fase de Grupos</span>
-        <h2 className="font-display text-3xl font-extrabold mt-1">Tus Predicciones</h2>
+        <span className="font-display text-xs font-semibold text-brand-green uppercase tracking-[0.2em]">{t("phase")}</span>
+        <h2 className="font-display text-3xl font-extrabold mt-1">{t("predictions")}</h2>
       </div>
 
-      <ProgressBar value={totalCompleted} max={72} label="Predicciones totales" />
+      <ProgressBar value={totalCompleted} max={72} label={t("totalLabel")} />
+
+      {/* Deadline banner */}
+      {groupDeadline && (
+        <div className="px-4 pb-2">
+          {globalLocked
+            ? <div className="rounded-xl border border-danger/40 bg-danger/5 px-3 py-2 text-xs text-danger">{t("locked")}</div>
+            : <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-textMuted">{t("editDeadline", { date: formatGroupDeadline(groupDeadline) })}</div>
+          }
+        </div>
+      )}
 
       {/* Group selector */}
       <div className="px-4 pt-3 pb-1 overflow-x-auto scroll-hide">
@@ -276,7 +293,7 @@ export function GruposClient({
                         : "bg-surface border-border text-textMuted",
                 ].join(" ")}
               >
-                Grupo {g}{done ? " ✓" : partial ? ` ${completedCount}/${groupMatches.length}` : ""}
+                {t("groupLabel")} {g}{done ? " ✓" : partial ? ` ${completedCount}/${groupMatches.length}` : ""}
               </button>
             );
           })}
@@ -292,7 +309,7 @@ export function GruposClient({
                 {currentGroup}
               </div>
               <div>
-                <div className="font-display text-lg font-bold">Grupo {currentGroup}</div>
+                <div className="font-display text-lg font-bold">{t("groupLabel")} {currentGroup}</div>
                 <div className="flex gap-1 mt-0.5">
                   {currentTeams.map((t) => (
                     <Flag key={t.code} emoji={t.flag} size={14} />
@@ -344,7 +361,7 @@ export function GruposClient({
             onClick={applyOdds}
             className="px-3 h-8 rounded-lg border border-brand-green/60 text-brand-green text-xs font-semibold"
           >
-            Aplicar sugerencias
+            {t("applyOdds")}
           </button>
         </div>
       )}
@@ -375,7 +392,7 @@ export function GruposClient({
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <path d="M3 3h18v4H3zM3 10h18v4H3zM3 17h18v4H3z" stroke="#00E676" strokeWidth="1.8" />
           </svg>
-          {showStandings ? "Ocultar tabla" : "Ver tabla predictiva"}
+          {showStandings ? t("hideStandings") : t("showStandings")}
         </button>
       </div>
 
@@ -387,9 +404,9 @@ export function GruposClient({
 
       <div className="px-4 pt-2 pb-2">
         <div className="flex items-center gap-2 text-xs h-5">
-          {saveState === "saving" && <><span className="w-1.5 h-1.5 rounded-full bg-amber animate-pulseDot" /><span className="text-textMuted">Guardando…</span></>}
-          {saveState === "saved" && <><span className="w-1.5 h-1.5 rounded-full bg-brand-green" /><span className="text-brand-green">Guardado</span></>}
-          {saveState === "error" && <span className="text-danger">Error al guardar — reintenta</span>}
+          {saveState === "saving" && <><span className="w-1.5 h-1.5 rounded-full bg-amber animate-pulseDot" /><span className="text-textMuted">{t("saving")}</span></>}
+          {saveState === "saved" && <><span className="w-1.5 h-1.5 rounded-full bg-brand-green" /><span className="text-brand-green">{t("saved")}</span></>}
+          {saveState === "error" && <span className="text-danger">{t("error")}</span>}
         </div>
       </div>
 
@@ -405,10 +422,10 @@ export function GruposClient({
             onClick={saveGroupAndAdvance}
           >
             {saveState === "saving"
-              ? "Guardando…"
+              ? t("saving")
               : currentGroupDone
-                ? `Guardar Grupo ${currentGroup} →`
-                : `Completa el Grupo ${currentGroup} (${groupCompleted}/6)`}
+                ? `${t("saveGroup")} ${currentGroup} →`
+                : `Completa el ${t("groupLabel")} ${currentGroup} (${groupCompleted}/6)`}
           </Btn>
         )}
       </div>
@@ -417,41 +434,6 @@ export function GruposClient({
   );
 }
 
-function OddsPanel({
-  homeName,
-  awayName,
-  odds,
-}: {
-  homeName: string;
-  awayName: string;
-  odds: MatchOdds;
-}) {
-  const hp = Math.round(odds.homeWinProb * 100);
-  const dp = Math.round(odds.drawProb * 100);
-  const ap = Math.round(odds.awayWinProb * 100);
-  const homeLeads = odds.homeWinProb >= odds.awayWinProb;
-
-  return (
-    <div className="px-4 py-2.5 border-b border-border/40 bg-surface/30 text-xs">
-      <div className="flex items-center gap-1.5 mb-1.5">
-        <span className={["font-semibold flex-1 truncate", homeLeads ? "text-white" : "text-textMuted"].join(" ")}>
-          {homeName} {hp}%
-        </span>
-        <span className="text-textMuted shrink-0">Empate {dp}%</span>
-        <span className={["font-semibold flex-1 text-right truncate", !homeLeads ? "text-white" : "text-textMuted"].join(" ")}>
-          {ap}% {awayName}
-        </span>
-      </div>
-      {/* Probability bar */}
-      <div className="flex rounded-full overflow-hidden h-1.5 gap-px">
-        <div style={{ width: `${hp}%` }} className="bg-brand-green" />
-        <div style={{ width: `${dp}%` }} className="bg-amber" />
-        <div style={{ width: `${ap}%` }} className="bg-textMuted" />
-      </div>
-      <div className="text-textMuted mt-1.5 text-center text-[10px]">
-        Resultado sugerido:&nbsp;
-        <span className="text-white font-bold">{odds.suggestedHome}–{odds.suggestedAway}</span>
-      </div>
-    </div>
-  );
+function formatGroupDeadline(d: Date): string {
+  return d.toLocaleString("es-MX", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "America/Mexico_City" });
 }

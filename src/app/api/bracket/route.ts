@@ -1,25 +1,41 @@
 import { NextResponse } from "next/server";
 import { getServerClient } from "@/lib/supabase";
-import { LOCK_DATE_ISO } from "@/lib/constants";
 
-function locked() {
-  return new Date(LOCK_DATE_ISO).getTime() <= Date.now();
+async function getBracketEditDeadline(sb: ReturnType<typeof getServerClient>): Promise<Date | null> {
+  const { data } = await sb.from("tournament_state").select("bracket_edit_deadline").eq("id", 1).maybeSingle();
+  return data?.bracket_edit_deadline ? new Date(data.bracket_edit_deadline) : null;
 }
 
 export async function POST(req: Request) {
   try {
-    if (locked()) return NextResponse.json({ error: "Las predicciones están cerradas" }, { status: 423 });
     const { userId, picks, submit } = await req.json();
     if (!userId || !Array.isArray(picks)) {
       return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
     }
     const sb = getServerClient();
 
+    const deadline = await getBracketEditDeadline(sb);
+    if (deadline && new Date() >= deadline) {
+      return NextResponse.json({ error: "Predictions locked — edit window has closed" }, { status: 423 });
+    }
+
     const { data: user } = await sb.from("users").select("id, submitted_at").eq("id", userId).maybeSingle();
     if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     if (user.submitted_at) return NextResponse.json({ error: "Quiniela ya enviada" }, { status: 409 });
 
-    const rows = picks.map((p: any) => ({
+    const rows = picks.map((p: {
+      phase: string;
+      slot: number;
+      home_team_code: string;
+      away_team_code: string;
+      home_team_name?: string;
+      away_team_name?: string;
+      home_team_flag?: string;
+      away_team_flag?: string;
+      predicted_home_score: number;
+      predicted_away_score: number;
+      winner_code: string;
+    }) => ({
       user_id: userId,
       phase: p.phase,
       slot: p.slot,

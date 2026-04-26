@@ -5,7 +5,15 @@
       "Bash(mkdir -p /tmp/design_extract)",
       "Read(//tmp/**)",
       "Bash(tar -xzf /Users/pandabot/.claude/projects/-Users-pandabot-Desktop-quiniela/be63b61c-1419-4c0e-8768-8e3e4ef440a4/tool-results/webfetch-1776566184068-0tj6qc.bin)",
-      "Bash(gunzip -c /Users/pandabot/.claude/projects/-Users-pandabot-Desktop-quiniela/be63b61c-1419-4c0e-8768-8e3e4ef440a4/tool-results/webfetch-1776566184068-0tj6qc.bin)"
+      "Bash(gunzip -c /Users/pandabot/.claude/projects/-Users-pandabot-Desktop-quiniela/be63b61c-1419-4c0e-8768-8e3e4ef440a4/tool-results/webfetch-1776566184068-0tj6qc.bin)",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(npm install *)",
+      "mcp__ca5434f3-f952-4fb2-a0f4-7387db7331d2__apply_migration",
+      "mcp__ca5434f3-f952-4fb2-a0f4-7387db7331d2__execute_sql",
+      "Bash(git commit *)"
     ]
   }
 }

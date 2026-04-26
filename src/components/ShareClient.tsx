@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card, Btn, Flag } from "./primitives";
 import { Confetti } from "./Confetti";
 import { BottomNav } from "./BottomNav";
+import { InstagramShareButton } from "./InstagramShareCard";
 import { getStoredUser } from "@/lib/session";
 import { track } from "@/lib/analytics";
 
@@ -21,6 +23,7 @@ type BracketPick = {
 
 export function ShareClient({ poolId, poolName }: { poolId: string; poolName: string }) {
   const router = useRouter();
+  const t = useTranslations("share");
   const [bracket, setBracket] = useState<BracketPick[] | null>(null);
 
   useEffect(() => {
@@ -47,13 +50,15 @@ export function ShareClient({ poolId, poolName }: { poolId: string; poolName: st
   const shareBracket = () => {
     if (!champion) return;
     track("share_clicked", { pool_id: poolId, method: "whatsapp", champion: champion.name });
-    const msg = `🏆 Mi quiniela del Mundial 2026 en FUTPUL está lista.
-
-Campeón: ${champion.flag} ${champion.name}
-Final: ${runnerUp?.flag} ${runnerUp?.name}
-Semifinales: ${semis.map(s => `${s.flag} ${s.name}`).join(", ")}
-
-Únete a ${poolName}: https://futpul.com/pool/join?code=${poolId}`;
+    const msg = t("whatsappText", {
+      championFlag: champion.flag,
+      championName: champion.name,
+      runnerUpFlag: runnerUp?.flag ?? "",
+      runnerUpName: runnerUp?.name ?? "",
+      semis: semis.map(s => `${s.flag} ${s.name}`).join(", "),
+      poolName,
+      poolId,
+    });
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
@@ -65,18 +70,18 @@ Semifinales: ${semis.map(s => `${s.flag} ${s.name}`).join(", ")}
       <Confetti />
       <div className="relative z-[2] pt-14 px-5 pb-5 text-center">
         <div className="text-5xl mb-2">🏆</div>
-        <h1 className="font-display text-4xl font-extrabold text-brand-green tracking-tight">¡Quiniela enviada!</h1>
-        <p className="text-sm text-textMuted mt-1">{poolName} · 64 predicciones bloqueadas</p>
+        <h1 className="font-display text-4xl font-extrabold text-brand-green tracking-tight">{t("submitted")}</h1>
+        <p className="text-sm text-textMuted mt-1">{poolName} · 64 {t("predictions")}</p>
       </div>
 
       {champion && (
         <div className="relative z-[2] px-4 pb-4">
           <Card glow className="text-center bg-gradient-to-br from-[#0A1F14] to-surface">
             <div className="p-6">
-              <div className="text-[11px] text-brand-green uppercase tracking-[0.2em] mb-3">Tu campeón predicho</div>
+              <div className="text-[11px] text-brand-green uppercase tracking-[0.2em] mb-3">{t("champion")}</div>
               <div className="text-6xl mb-2 animate-float">{champion.flag}</div>
               <div className="font-display text-4xl font-extrabold">{champion.name}</div>
-              <div className="text-xs text-textMuted mt-1">Campeón del Mundo 2026</div>
+              <div className="text-xs text-textMuted mt-1">{t("worldChampion")}</div>
             </div>
           </Card>
         </div>
@@ -86,13 +91,13 @@ Semifinales: ${semis.map(s => `${s.flag} ${s.name}`).join(", ")}
         <div className="relative z-[2] px-4 pb-4">
           <Card>
             <div className="px-4 py-3 border-b border-border">
-              <span className="font-display text-base font-bold uppercase tracking-wide">Tu podio</span>
+              <span className="font-display text-base font-bold uppercase tracking-wide">{t("podium")}</span>
             </div>
             {[
-              { team: champion, label: "Campeón", tone: "gold" },
-              { team: runnerUp, label: "Subcampeón", tone: "silver" },
-              { team: thirdPlace, label: "Tercer puesto", tone: "bronze" },
-              { team: fourthPlace, label: "Cuarto puesto", tone: "muted" },
+              { team: champion, label: t("pos1"), tone: "gold" },
+              { team: runnerUp, label: t("pos2"), tone: "silver" },
+              { team: thirdPlace, label: t("pos3"), tone: "bronze" },
+              { team: fourthPlace, label: t("pos4"), tone: "muted" },
             ].filter(r => r.team).map((r, i, arr) => (
               <div
                 key={r.label}
@@ -126,8 +131,16 @@ Semifinales: ${semis.map(s => `${s.flag} ${s.name}`).join(", ")}
           <svg width="20" height="20" viewBox="0 0 24 24" fill="#000">
             <path d="M17.6 6.3A8 8 0 004.1 16.5L3 21l4.6-1.2a8 8 0 004.4 1.3 8 8 0 008-8 8 8 0 00-2.4-5.8z" />
           </svg>
-          Compartir en WhatsApp
+          {t("whatsapp")}
         </Btn>
+        <InstagramShareButton
+          data={{
+            champion: champion ? { name: champion.name, flag: champion.flag } : null,
+            runnerUp: runnerUp ? { name: runnerUp.name, flag: runnerUp.flag } : null,
+            thirdPlace: thirdPlace ? { name: thirdPlace.name, flag: thirdPlace.flag } : null,
+            poolName,
+          }}
+        />
       </div>
 
       <BottomNav poolId={poolId} />

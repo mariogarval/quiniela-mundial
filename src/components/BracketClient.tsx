@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Btn, Flag, ProgressBar } from "./primitives";
 import { ScoreStepper } from "./MatchRow";
-import { GROUPS, GROUP_LETTERS, LOCK_DATE_ISO } from "@/lib/constants";
+import { GROUPS, GROUP_LETTERS } from "@/lib/constants";
 import { buildR32, nextRound, thirdPlacePair, type BracketNodePick } from "@/lib/bracket";
 import { computeStandings } from "@/lib/standings";
 import { phaseDisplayName } from "@/lib/scoring";
@@ -26,6 +27,7 @@ export function BracketClient({
   groupMatches: Match[];
 }) {
   const router = useRouter();
+  const t = useTranslations("bracket");
   const [userId, setUserId] = useState<string | null>(null);
   const [groupScores, setGroupScores] = useState<Record<string, { home: string; away: string }>>({});
   const [picks, setPicks] = useState<PickState>({});
@@ -33,9 +35,11 @@ export function BracketClient({
   const [activePhase, setActivePhase] = useState<"r32" | "r16" | "qf" | "sf" | "third" | "final">("r32");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [submitting, setSubmitting] = useState(false);
-  const locked = useMemo(() => new Date(LOCK_DATE_ISO).getTime() <= Date.now(), []);
+  const [bracketDeadline, setBracketDeadline] = useState<Date | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didInteract = useRef(false); // only autosave after first user interaction
+
+  const locked = useMemo(() => bracketDeadline ? new Date() >= bracketDeadline : false, [bracketDeadline]);
 
   useEffect(() => {
     const u = getStoredUser();
@@ -61,6 +65,9 @@ export function BracketClient({
       setHydrated(true);
       track("bracket_opened", { pool_id: poolId });
     })();
+    fetch("/api/deadlines").then(r => r.json()).then(d => {
+      if (d.bracketEditDeadline) setBracketDeadline(new Date(d.bracketEditDeadline));
+    });
   }, [poolId, router]);
 
   // ── Build bracket rounds from group predictions ───────────────────────────
@@ -155,12 +162,12 @@ export function BracketClient({
   }, [sfPicks]);
 
   const phases = [
-    { id: "r32" as const,    label: "R32",       pairs: r32Pairs,  total: 16 },
-    { id: "r16" as const,    label: "Octavos",   pairs: r16Pairs,  total: 8 },
-    { id: "qf" as const,     label: "Cuartos",   pairs: qfPairs,   total: 4 },
-    { id: "sf" as const,     label: "Semis",     pairs: sfPairs,   total: 2 },
-    { id: "third" as const,  label: "3er lugar", pairs: thirdPair, total: 1 },
-    { id: "final" as const,  label: "Final",     pairs: finalPair, total: 1 },
+    { id: "r32" as const,    label: t("phases.r32"),   pairs: r32Pairs,  total: 16 },
+    { id: "r16" as const,    label: t("phases.r16"),   pairs: r16Pairs,  total: 8 },
+    { id: "qf" as const,     label: t("phases.qf"),    pairs: qfPairs,   total: 4 },
+    { id: "sf" as const,     label: t("phases.sf"),    pairs: sfPairs,   total: 2 },
+    { id: "third" as const,  label: t("phases.third"), pairs: thirdPair, total: 1 },
+    { id: "final" as const,  label: t("phases.final"), pairs: finalPair, total: 1 },
   ];
   const activeConfig = phases.find((p) => p.id === activePhase)!;
 
@@ -222,21 +229,6 @@ export function BracketClient({
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [picks, userId, hydrated]);
-
-  // ── Auto-advance to the next unlocked phase when current phase is completed ──
-  useEffect(() => {
-    if (!hydrated || !didInteract.current) return;
-    const phIdx = phases.findIndex((p) => p.id === activePhase);
-    const ph = phases[phIdx];
-    const done = ph.total > 0 && ph.pairs.filter((pr) => picks[`${ph.id}-${pr.slot}`]?.winner).length === ph.total;
-    if (!done) return;
-    const next = phases.slice(phIdx + 1).find((n) => n.pairs.length > 0 && n.pairs.every((p) => p.home && p.away));
-    if (next) {
-      const nextDone = next.pairs.filter((pr) => picks[`${next.id}-${pr.slot}`]?.winner).length === next.total;
-      if (!nextDone) setActivePhase(next.id);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picks]);
 
   // ── Score → winner: auto-detect from score; clear when tied (penalty needed) ─
   const updatePick = (phase: string, slot: number, patch: Partial<{ home: string; away: string; winner: string }>) => {
@@ -307,7 +299,7 @@ export function BracketClient({
 
   // ── Loading / guard states ─────────────────────────────────────────────────
   if (!hydrated) {
-    return <div className="px-4 pt-20 text-center text-textMuted">Cargando tu llave…</div>;
+    return <div className="px-4 pt-20 text-center text-textMuted">{t("loading")}</div>;
   }
 
   if (Object.keys(groupScores).length < 72) {
@@ -315,10 +307,10 @@ export function BracketClient({
       <div className="max-w-xl mx-auto px-4 pt-20">
         <div className="rounded-2xl border border-border bg-surface p-6 text-center">
           <div className="text-4xl mb-3">⚽</div>
-          <h3 className="font-display text-xl font-bold mb-2">Primero completa tus grupos</h3>
-          <p className="text-sm text-textMuted mb-4">Tu llave se construye a partir de tus predicciones de fase de grupos.</p>
+          <h3 className="font-display text-xl font-bold mb-2">{t("needGroups")}</h3>
+          <p className="text-sm text-textMuted mb-4">{t("needGroupsDesc")}</p>
           <Btn variant="gradient" onClick={() => router.push(`/pool/${poolId}/grupos`)}>
-            Ir a Grupos
+            {t("goToGroups")}
           </Btn>
         </div>
       </div>
@@ -331,14 +323,24 @@ export function BracketClient({
         {/* Header */}
         <div className="px-4 pt-14 md:pt-8 pb-2">
           <span className="font-display text-xs font-semibold text-brand-green uppercase tracking-[0.2em]">
-            Basado en tus predicciones
+            {t("basedOn")}
           </span>
           <h2 className="font-display text-3xl font-extrabold mt-1">
-            Tu Llave — {phaseDisplayName(activePhase)}
+            {t("title")} — {phaseDisplayName(activePhase)}
           </h2>
         </div>
 
-        <ProgressBar value={completedTotal} max={32} label="Llaves completas" />
+        <ProgressBar value={completedTotal} max={32} label={t("progressLabel")} />
+
+        {/* Deadline banner */}
+        {bracketDeadline && (
+          <div className="px-4 pb-2">
+            {locked
+              ? <div className="rounded-xl border border-danger/40 bg-danger/5 px-3 py-2 text-xs text-danger">{t("locked")}</div>
+              : <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-textMuted">{t("editDeadline", { date: formatDeadline(bracketDeadline) })}</div>
+            }
+          </div>
+        )}
 
         {/* Phase tabs */}
         <div className="px-4 pt-3 pb-1 overflow-x-auto scroll-hide">
@@ -377,7 +379,7 @@ export function BracketClient({
         <div className="py-3">
           {activeConfig.pairs.length === 0 && (
             <div className="mx-4 rounded-2xl border border-border bg-surface p-5 text-center text-sm text-textMuted">
-              Completa la fase anterior para desbloquear {activeConfig.label.toLowerCase()}.
+              {t("unlockPhase")} {activeConfig.label.toLowerCase()}.
             </div>
           )}
           {activeConfig.pairs.map((p) => {
@@ -394,14 +396,14 @@ export function BracketClient({
                 {/* Card header */}
                 <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center justify-between">
                   <span className="text-[11px] text-white/30 uppercase tracking-widest font-medium">
-                    {activeConfig.label} — Partido {p.slot + 1}
+                    {activeConfig.label} — {t("match")} {p.slot + 1}
                   </span>
                   {isDone && (
                     <div className="flex items-center gap-1">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                         <path d="M20 6L9 17l-5-5" stroke="#00E676" strokeWidth="2.5" strokeLinecap="round" />
                       </svg>
-                      <span className="text-[11px] text-brand-green font-semibold">Pickeado</span>
+                      <span className="text-[11px] text-brand-green font-semibold">{t("pickeado")}</span>
                     </div>
                   )}
                 </div>
@@ -440,7 +442,7 @@ export function BracketClient({
                 {isTied && !locked && (
                   <div className="px-4 pb-4">
                     <p className="text-[11px] text-amber text-center mb-2.5">
-                      Sin empate en eliminatorias — ¿quién gana en penales?
+                      {t("tieBreaker")}
                     </p>
                     <div className="flex gap-2">
                       <button
@@ -475,9 +477,9 @@ export function BracketClient({
 
         {/* Save status + submit */}
         <div className="px-4 pb-2 flex items-center gap-2 h-6">
-          {saveState === "saving" && <><span className="w-1.5 h-1.5 rounded-full bg-amber animate-pulseDot" /><span className="text-xs text-textMuted">Guardando…</span></>}
-          {saveState === "saved"  && <><span className="w-1.5 h-1.5 rounded-full bg-brand-green" /><span className="text-xs text-brand-green">Guardado</span></>}
-          {saveState === "error"  && <span className="text-xs text-danger">Error al guardar — reintenta</span>}
+          {saveState === "saving" && <><span className="w-1.5 h-1.5 rounded-full bg-amber animate-pulseDot" /><span className="text-xs text-textMuted">{t("saving")}</span></>}
+          {saveState === "saved"  && <><span className="w-1.5 h-1.5 rounded-full bg-brand-green" /><span className="text-xs text-brand-green">{t("saved")}</span></>}
+          {saveState === "error"  && <span className="text-xs text-danger">{t("saveError")}</span>}
         </div>
         <div className="px-4 pb-4">
           <Btn
@@ -486,16 +488,16 @@ export function BracketClient({
             disabled={(!allDone && !currentPhaseDone) || submitting}
           >
             {submitting
-              ? "Enviando…"
+              ? t("submitting")
               : allDone
-                ? "Enviar Quiniela completa 🏆"
+                ? t("submitAll")
                 : currentPhaseDone && nextPhase
-                  ? `Continúa con ${nextPhase.label} →`
-                  : `Faltan ${activeConfig.total - currentPhasePicked} picks`}
+                  ? t("continueWith", { phase: nextPhase.label })
+                  : t("remaining", { n: String(activeConfig.total - currentPhasePicked) })}
           </Btn>
           {allDone && (
             <p className="text-center text-[11px] text-textSub mt-2">
-              Al enviar, tu quiniela queda bloqueada permanentemente.
+              {t("finalWarning")}
             </p>
           )}
         </div>
@@ -512,4 +514,8 @@ function findPair(phase: string, slot: number, sets: {
     sf: sets.sfPairs, third: sets.thirdPair, final: sets.finalPair,
   };
   return map[phase]?.find((p) => p.slot === slot);
+}
+
+function formatDeadline(d: Date): string {
+  return d.toLocaleString("es-MX", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "America/Mexico_City" });
 }

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerClient } from "@/lib/supabase";
-import { LOCK_DATE_ISO } from "@/lib/constants";
 
-function locked() {
-  return new Date(LOCK_DATE_ISO).getTime() <= Date.now();
+async function getGroupEditDeadline(sb: ReturnType<typeof getServerClient>): Promise<Date | null> {
+  const { data } = await sb.from("tournament_state").select("group_edit_deadline").eq("id", 1).maybeSingle();
+  return data?.group_edit_deadline ? new Date(data.group_edit_deadline) : null;
 }
 
 // GET /api/predictions?userId=...
@@ -21,23 +21,26 @@ export async function GET(req: Request) {
 // POST /api/predictions — upsert group predictions
 export async function POST(req: Request) {
   try {
-    if (locked()) {
-      return NextResponse.json({ error: "Las predicciones están cerradas" }, { status: 423 });
-    }
     const { userId, predictions } = await req.json();
     if (!userId || !Array.isArray(predictions)) {
       return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
     }
     const sb = getServerClient();
 
-    // Ensure user exists + isn't already submitted
-    const { data: user } = await sb.from("users").select("id, submitted_at").eq("id", userId).maybeSingle();
+    const deadline = await getGroupEditDeadline(sb);
+    if (deadline && new Date() >= deadline) {
+      return NextResponse.json({ error: "Predictions locked — edit window has closed" }, { status: 423 });
+    }
+
+    // Ensure user exists
+    const { data: user } = await sb.from("users").select("id").eq("id", userId).maybeSingle();
     if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
-    if (user.submitted_at) return NextResponse.json({ error: "Quiniela ya enviada" }, { status: 409 });
 
     const rows = predictions
-      .filter((p: any) => p && p.match_id && Number.isFinite(p.predicted_home_score) && Number.isFinite(p.predicted_away_score))
-      .map((p: any) => ({
+      .filter((p: { match_id?: unknown; predicted_home_score?: unknown; predicted_away_score?: unknown }) =>
+        p && p.match_id && Number.isFinite(p.predicted_home_score) && Number.isFinite(p.predicted_away_score)
+      )
+      .map((p: { match_id: string; predicted_home_score: number; predicted_away_score: number }) => ({
         user_id: userId,
         match_id: p.match_id,
         predicted_home_score: p.predicted_home_score,
