@@ -34,6 +34,7 @@ export function BracketClient({
   const [hydrated, setHydrated] = useState(false);
   const [activePhase, setActivePhase] = useState<"r32" | "r16" | "qf" | "sf" | "third" | "final">("r32");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [bracketDeadline, setBracketDeadline] = useState<Date | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -215,15 +216,27 @@ export function BracketClient({
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     setSaveState("saving");
-    saveTimerRef.current = setTimeout(() => {
-      fetch("/api/bracket", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, picks: rows }),
-      })
-        .then((r) => { setSaveState(r.ok ? "saved" : "error"); })
-        .catch(() => setSaveState("error"))
-        .finally(() => setTimeout(() => setSaveState("idle"), 1500));
+    setSaveError(null);
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        const r = await fetch("/api/bracket", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, picks: rows }),
+        });
+        if (!r.ok) {
+          const errData = await r.json().catch(() => ({}));
+          setSaveError((errData as { error?: string }).error ?? `HTTP ${r.status}`);
+          setSaveState("error");
+        } else {
+          setSaveState("saved");
+        }
+      } catch (err) {
+        setSaveError(err instanceof Error ? err.message : "save failed");
+        setSaveState("error");
+      } finally {
+        setTimeout(() => setSaveState("idle"), 1500);
+      }
     }, 600);
 
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
@@ -479,7 +492,7 @@ export function BracketClient({
         <div className="px-4 pb-2 flex items-center gap-2 h-6">
           {saveState === "saving" && <><span className="w-1.5 h-1.5 rounded-full bg-amber animate-pulseDot" /><span className="text-xs text-textMuted">{t("saving")}</span></>}
           {saveState === "saved"  && <><span className="w-1.5 h-1.5 rounded-full bg-brand-green" /><span className="text-xs text-brand-green">{t("saved")}</span></>}
-          {saveState === "error"  && <span className="text-xs text-danger">{t("saveError")}</span>}
+          {saveState === "error"  && <span className="text-xs text-danger">{saveError ? `${t("saveError")}: ${saveError}` : t("saveError")}</span>}
         </div>
         <div className="px-4 pb-4">
           <Btn

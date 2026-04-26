@@ -24,9 +24,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Predictions locked — edit window has closed" }, { status: 423 });
     }
 
-    const { data: user } = await sb.from("users").select("id, submitted_at").eq("id", userId).maybeSingle();
+    const { data: user } = await sb.from("users").select("id").eq("id", userId).maybeSingle();
     if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
-    if (user.submitted_at) return NextResponse.json({ error: "Quiniela ya enviada" }, { status: 409 });
 
     const rows = picks.map((p: {
       phase: string;
@@ -72,7 +71,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = err instanceof Error
+      ? err.message
+      : (err as { message?: string })?.message ?? String(err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

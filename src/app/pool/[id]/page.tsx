@@ -4,6 +4,7 @@ import { Card, Btn, Pill } from "@/components/primitives";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { PoolCodeCard } from "@/components/PoolCodeCard";
 import { InviteCard } from "@/components/InviteCard";
+import { MyQuinielaCard } from "@/components/MyQuinielaCard";
 import { loadPoolWithPlayers } from "@/lib/data";
 import { LOCK_DATE_ISO, GROUP_LETTERS } from "@/lib/constants";
 import { getServerClient } from "@/lib/supabase";
@@ -74,6 +75,9 @@ export default async function PoolHomePage({ params }: { params: { id: string } 
           </div>
           <CountdownTimer targetIso={LOCK_DATE_ISO} />
         </div>
+
+        {/* My quiniela results (only renders if user has submitted bracket) */}
+        <MyQuinielaCard poolId={pool.id} poolName={pool.name} />
 
         {/* Join code share card */}
         <PoolCodeCard joinCode={pool.join_code} poolName={pool.name} />
