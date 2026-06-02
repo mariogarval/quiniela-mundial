@@ -8,7 +8,6 @@ import { StandingsTable } from "./StandingsTable";
 import { GROUPS, GROUP_LETTERS } from "@/lib/constants";
 import type { Match } from "@/types";
 import { getStoredUser } from "@/lib/session";
-import { PAYMENTS_ENABLED } from "@/lib/flags";
 import { track } from "@/lib/analytics";
 
 type Scores = Record<string, { home: string; away: string }>;
@@ -36,7 +35,6 @@ export function GruposClient({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [aiAccess, setAiAccess] = useState<{ hasAccess: boolean; trialUsed: boolean } | null>(null);
   const [groupOdds, setGroupOdds] = useState<MatchOdds[] | null>(null);
   const [oddsLoading, setOddsLoading] = useState(false);
   const [groupDeadline, setGroupDeadline] = useState<Date | null>(null);
@@ -60,14 +58,9 @@ export function GruposClient({
       if (d.groupEditDeadline) setGroupDeadline(new Date(d.groupEditDeadline));
     });
     if (u.id) {
-      const fetches: Promise<unknown>[] = [
-        fetch(`/api/predictions?userId=${u.id}`).then((r) => r.json()),
-      ];
-      if (PAYMENTS_ENABLED) {
-        fetches.push(fetch(`/api/ai-predict?userId=${u.id}&poolId=${poolId}`).then((r) => r.json()));
-      }
-      Promise.all(fetches)
-        .then(([predData, aiData]) => {
+      fetch(`/api/predictions?userId=${u.id}`)
+        .then((r) => r.json())
+        .then((predData) => {
           if ((predData as { predictions?: unknown[] })?.predictions) {
             setScores((prev) => {
               const next = { ...prev };
@@ -80,7 +73,6 @@ export function GruposClient({
               return next;
             });
           }
-          if (PAYMENTS_ENABLED && aiData) setAiAccess(aiData as { hasAccess: boolean; trialUsed: boolean });
         })
         .catch(() => {});
     }
@@ -216,13 +208,8 @@ export function GruposClient({
           })),
         }),
       });
-      if (res.status === 402) {
-        setAiAccess({ hasAccess: false, trialUsed: true });
-        return;
-      }
       const data = await res.json();
       setGroupOdds(data.odds ?? null);
-      setAiAccess((prev) => prev ? { ...prev, trialUsed: true } : prev);
     } finally {
       setOddsLoading(false);
     }
@@ -234,22 +221,6 @@ export function GruposClient({
     for (const o of groupOdds) {
       setScore(o.matchId, "home", String(o.suggestedHome));
       setScore(o.matchId, "away", String(o.suggestedAway));
-    }
-  };
-
-  const handleOddsUnlock = async () => {
-    if (!userId) return;
-    try {
-      const res = await fetch("/api/ai/unlock", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, poolId }),
-      });
-      const data = await res.json();
-      if (data.unlocked) { setAiAccess({ hasAccess: true, trialUsed: true }); return; }
-      if (data.checkoutUrl) window.location.href = data.checkoutUrl;
-    } catch {
-      // network failure — user can retry
     }
   };
 
@@ -371,18 +342,6 @@ export function GruposClient({
           >
             {t("applyOdds")}
           </button>
-        </div>
-      )}
-
-      {/* Paywall */}
-      {PAYMENTS_ENABLED && aiAccess?.trialUsed && !aiAccess?.hasAccess && (
-        <div className="mx-4 mb-3 rounded-xl border border-brand-green/40 bg-brand-greenDim p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-lg">📊</span>
-            <span className="font-semibold text-sm">Desbloquea pronósticos para todo el torneo</span>
-          </div>
-          <p className="text-xs text-textMuted mb-3 pl-7">Probabilidades del mercado para los 12 grupos · Pago único de $2.99</p>
-          <Btn variant="gradient" onClick={handleOddsUnlock}>Desbloquear · $2.99</Btn>
         </div>
       )}
 

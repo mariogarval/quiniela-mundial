@@ -50,7 +50,6 @@ function AdminUnlockGate({
   allGroupsDone: boolean;
 }) {
   const [loading, setLoading] = useState(false);
-  const [declining, setDeclining] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleUnlock = async () => {
@@ -63,35 +62,12 @@ function AdminUnlockGate({
         body: JSON.stringify({ poolId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al iniciar el pago");
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
-      }
+      if (!res.ok) throw new Error(data.error || "Error al activar eliminatorias");
+      if (data.unlocked) window.location.reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDecline = async () => {
-    setDeclining(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/pool/unlock`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ poolId }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Error");
-      }
-      window.location.reload();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error desconocido");
-    } finally {
-      setDeclining(false);
     }
   };
 
@@ -121,32 +97,18 @@ function AdminUnlockGate({
 
       <Card>
         <div className="p-4 text-center">
-          <div className="text-lg font-semibold mb-1">¿Continuamos hasta el campeón?</div>
+          <div className="text-lg font-semibold mb-1">¿Activamos las eliminatorias?</div>
           <p className="text-xs text-textMuted mb-4">
-            Desbloquea la fase eliminatoria para todos los jugadores de esta quiniela.
+            Activa la fase eliminatoria para todos los jugadores de esta quiniela.
           </p>
-          <div className="text-3xl font-display font-extrabold text-brand-green mb-4">$4.99</div>
 
           {error && <p className="text-xs text-danger mb-3">{error}</p>}
 
-          <div className="flex flex-col gap-2">
-            <Btn variant="gradient" onClick={handleUnlock} disabled={loading || declining}>
-              {loading ? "Iniciando pago…" : "Sí, continuar — $4.99"}
-            </Btn>
-            <button
-              onClick={handleDecline}
-              disabled={loading || declining}
-              className="text-sm text-textMuted py-2 hover:text-white transition-colors"
-            >
-              {declining ? "Cerrando…" : "No, terminar aquí"}
-            </button>
-          </div>
+          <Btn variant="gradient" onClick={handleUnlock} disabled={loading}>
+            {loading ? "Activando…" : "Activar eliminatorias"}
+          </Btn>
         </div>
       </Card>
-
-      <p className="text-[11px] text-textSub text-center px-4">
-        Pago único por quiniela. Si declines, el marcador queda congelado en la fase de grupos.
-      </p>
     </div>
   );
 }

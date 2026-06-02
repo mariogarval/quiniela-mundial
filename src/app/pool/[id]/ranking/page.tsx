@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { Card } from "@/components/primitives";
 import { loadPoolWithPlayers } from "@/lib/data";
 import { getServerClient } from "@/lib/supabase";
-import { PAYMENTS_ENABLED } from "@/lib/flags";
 
 export default async function RankingPage({ params }: { params: { id: string } }) {
   const { pool, players } = await loadPoolWithPlayers(params.id);
@@ -18,8 +17,6 @@ export default async function RankingPage({ params }: { params: { id: string } }
     .map((p) => ({ ...p, pts: totals.get(p.id) ?? 0 }))
     .sort((a, b) => b.pts - a.pts);
 
-  const frozen = PAYMENTS_ENABLED && pool.plan === "free" && pool.payment_status === "none";
-
   return (
     <main className="min-h-screen bg-bg pb-24 md:pb-8">
       {/* Full-width gradient header */}
@@ -27,19 +24,6 @@ export default async function RankingPage({ params }: { params: { id: string } }
         <div className="max-w-xl mx-auto pt-14 md:pt-8 pb-4 px-4">
           <h2 className="font-display text-3xl font-extrabold">{pool.name}</h2>
           <p className="text-sm text-textMuted mt-1">{players.length} participantes</p>
-          {frozen && (
-            <Card glow className="mt-4">
-              <div className="p-3 text-xs">
-                <div className="flex items-center gap-1.5 text-amber font-semibold mb-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber" />
-                  Ranking congelado después de grupos
-                </div>
-                <p className="text-textMuted">
-                  El admin puede desbloquear eliminatorias por $9 (Lemon Squeezy).
-                </p>
-              </div>
-            </Card>
-          )}
         </div>
       </div>
 
