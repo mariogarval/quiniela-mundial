@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { getStoredUser } from "@/lib/session";
 
 export function PoolLogoUpload({
@@ -58,11 +57,10 @@ export function PoolLogoUpload({
       {/* Logo display */}
       {logoUrl ? (
         <div className="relative group">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={logoUrl}
-            alt="Logo de la quiniela"
-            width={72}
-            height={72}
+            alt="Logo"
             className="w-16 h-16 rounded-2xl object-cover border border-border"
           />
           {isAdmin && (
