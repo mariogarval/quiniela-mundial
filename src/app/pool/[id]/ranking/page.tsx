@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { Card } from "@/components/primitives";
+import { ScoringGuide } from "@/components/ScoringGuide";
 import { loadPoolWithPlayers } from "@/lib/data";
 import { getServerClient } from "@/lib/supabase";
 
@@ -30,6 +31,7 @@ export default async function RankingPage({ params }: { params: { id: string } }
       {/* Centered content column */}
       <div className="max-w-xl mx-auto px-4 py-2">
         <Card>
+
           {rows.length === 0 && (
             <div className="p-6 text-center text-sm text-textMuted">Aún no hay puntos. Entra luego del primer partido real.</div>
           )}
@@ -64,6 +66,9 @@ export default async function RankingPage({ params }: { params: { id: string } }
             );
           })}
         </Card>
+
+        {/* Scoring guide */}
+        <ScoringGuide />
       </div>
     </main>
   );

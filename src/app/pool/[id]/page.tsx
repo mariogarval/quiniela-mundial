@@ -2,8 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, Btn, Pill } from "@/components/primitives";
 import { CountdownTimer } from "@/components/CountdownTimer";
-import { PoolCodeCard } from "@/components/PoolCodeCard";
-import { InviteCard } from "@/components/InviteCard";
+import { InviteBar } from "@/components/InviteBar";
 import { MyQuinielaCard } from "@/components/MyQuinielaCard";
 import { PoolPicksCard } from "@/components/PoolPicksCard";
 import { PoolLogoUpload } from "@/components/PoolLogoUpload";
@@ -83,11 +82,8 @@ export default async function PoolHomePage({ params }: { params: { id: string } 
         {/* Other users' picks — only shows if current user completed their bracket */}
         <PoolPicksCard poolId={pool.id} />
 
-        {/* Join code share card */}
-        <PoolCodeCard joinCode={pool.join_code} poolName={pool.name} />
-
-        {/* Invite friends with personal ref link */}
-        <InviteCard joinCode={pool.join_code} poolName={pool.name} />
+        {/* Compact invite bar */}
+        <InviteBar joinCode={pool.join_code} poolName={pool.name} />
 
         {/* CTA */}
         <div className="px-4 pb-4">
