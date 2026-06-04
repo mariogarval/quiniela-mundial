@@ -6,6 +6,7 @@ import { PoolCodeCard } from "@/components/PoolCodeCard";
 import { InviteCard } from "@/components/InviteCard";
 import { MyQuinielaCard } from "@/components/MyQuinielaCard";
 import { PoolPicksCard } from "@/components/PoolPicksCard";
+import { PoolLogoUpload } from "@/components/PoolLogoUpload";
 import { loadPoolWithPlayers } from "@/lib/data";
 import { LOCK_DATE_ISO, GROUP_LETTERS } from "@/lib/constants";
 import { getServerClient } from "@/lib/supabase";
@@ -50,12 +51,11 @@ export default async function PoolHomePage({ params }: { params: { id: string } 
               </p>
               <p className="text-[10px] text-textSub mt-0.5">{players.length} jugadores</p>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-brand-greenDim border border-brand-green flex items-center justify-center">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z" stroke="#00E676" strokeWidth="1.8" />
-                <path d="M12 2c0 0-3 4-3 10s3 10 3 10M12 2c0 0 3 4 3 10s-3 10-3 10M2 12h20M3.5 7h17M3.5 17h17" stroke="#00E676" strokeWidth="1.4" strokeLinecap="round" />
-              </svg>
-            </div>
+            <PoolLogoUpload
+              poolId={pool.id}
+              adminId={pool.admin_id}
+              initialLogoUrl={pool.logo_url ?? null}
+            />
           </div>
 
           <div className="flex gap-2">

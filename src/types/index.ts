@@ -56,6 +56,7 @@ export type Pool = {
   join_code: string;
   max_players: number;
   slack_webhook: string | null;
+  logo_url: string | null;
   created_at: string;
 };
 
