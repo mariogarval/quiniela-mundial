@@ -24,34 +24,40 @@ export function ScoringGuide() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="mt-4">
+    <div className="relative">
+      {/* Compact ? button */}
       <button
         onClick={() => setOpen((s) => !s)}
-        className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-border bg-surface text-sm font-semibold"
+        title="¿Cómo se calculan los puntos?"
+        className={[
+          "w-9 h-9 rounded-full border flex items-center justify-center text-sm font-bold transition-colors shrink-0",
+          open
+            ? "bg-brand-greenDim border-brand-green text-brand-green"
+            : "bg-surface border-border text-textMuted hover:border-brand-green/60 hover:text-brand-green",
+        ].join(" ")}
       >
-        <span className="flex items-center gap-2">
-          <span className="text-base">📋</span>
-          <span>¿Cómo se calculan los puntos?</span>
-        </span>
-        <svg
-          width="16" height="16" viewBox="0 0 24 24" fill="none"
-          className={["transition-transform duration-200", open ? "rotate-180" : ""].join(" ")}
-        >
-          <path d="M6 9l6 6 6-6" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        ?
       </button>
 
+      {/* Dropdown panel — anchored to the right */}
       {open && (
-        <div className="mt-2 rounded-xl border border-border bg-surface px-4 py-4 space-y-2">
-          {ROWS.map((r) => (
-            <div key={r.label} className="flex items-center justify-between gap-3">
-              <span className="text-xs text-textMuted">{r.label}</span>
-              <span className={["shrink-0 text-xs font-bold px-2 py-0.5 rounded-lg", BADGE[r.color]].join(" ")}>
-                +{r.pts} pts
-              </span>
-            </div>
-          ))}
-        </div>
+        <>
+          {/* Backdrop to close */}
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-11 z-20 w-72 rounded-2xl border border-border bg-surface shadow-xl p-4 space-y-2.5">
+            <p className="text-xs font-semibold text-textMuted uppercase tracking-widest mb-1">
+              📋 Puntos por acierto
+            </p>
+            {ROWS.map((r) => (
+              <div key={r.label} className="flex items-center justify-between gap-3">
+                <span className="text-xs text-textMuted leading-snug">{r.label}</span>
+                <span className={["shrink-0 text-xs font-bold px-2 py-0.5 rounded-lg", BADGE[r.color]].join(" ")}>
+                  +{r.pts} pts
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

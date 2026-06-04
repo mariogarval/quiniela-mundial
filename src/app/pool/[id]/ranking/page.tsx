@@ -23,8 +23,13 @@ export default async function RankingPage({ params }: { params: { id: string } }
       {/* Full-width gradient header */}
       <div className="bg-gradient-to-b from-[#0F1624] to-bg">
         <div className="max-w-xl mx-auto pt-14 md:pt-8 pb-4 px-4">
-          <h2 className="font-display text-3xl font-extrabold">{pool.name}</h2>
-          <p className="text-sm text-textMuted mt-1">{players.length} participantes</p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="font-display text-3xl font-extrabold">{pool.name}</h2>
+              <p className="text-sm text-textMuted mt-1">{players.length} participantes</p>
+            </div>
+            <ScoringGuide />
+          </div>
         </div>
       </div>
 
@@ -66,9 +71,6 @@ export default async function RankingPage({ params }: { params: { id: string } }
             );
           })}
         </Card>
-
-        {/* Scoring guide */}
-        <ScoringGuide />
       </div>
     </main>
   );
