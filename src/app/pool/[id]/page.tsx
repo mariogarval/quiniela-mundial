@@ -5,6 +5,7 @@ import { CountdownTimer } from "@/components/CountdownTimer";
 import { PoolCodeCard } from "@/components/PoolCodeCard";
 import { InviteCard } from "@/components/InviteCard";
 import { MyQuinielaCard } from "@/components/MyQuinielaCard";
+import { PoolPicksCard } from "@/components/PoolPicksCard";
 import { loadPoolWithPlayers } from "@/lib/data";
 import { LOCK_DATE_ISO, GROUP_LETTERS } from "@/lib/constants";
 import { getServerClient } from "@/lib/supabase";
@@ -78,6 +79,9 @@ export default async function PoolHomePage({ params }: { params: { id: string } 
 
         {/* My quiniela results (only renders if user has submitted bracket) */}
         <MyQuinielaCard poolId={pool.id} poolName={pool.name} />
+
+        {/* Other users' picks — only shows if current user completed their bracket */}
+        <PoolPicksCard poolId={pool.id} />
 
         {/* Join code share card */}
         <PoolCodeCard joinCode={pool.join_code} poolName={pool.name} />

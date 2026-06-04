@@ -35,6 +35,7 @@ export function GruposClient({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [showInstructions, setShowInstructions] = useState(false);
   const [groupOdds, setGroupOdds] = useState<MatchOdds[] | null>(null);
   const [oddsLoading, setOddsLoading] = useState(false);
   const [groupDeadline, setGroupDeadline] = useState<Date | null>(null);
@@ -232,6 +233,59 @@ export function GruposClient({
         <h2 className="font-display text-3xl font-extrabold mt-1">{t("predictions")}</h2>
       </div>
 
+      {/* Instructions toggle */}
+      <div className="px-4 pb-2">
+        <button
+          onClick={() => setShowInstructions((s) => !s)}
+          className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-border bg-surface text-sm font-semibold"
+        >
+          <span className="flex items-center gap-2">
+            <span className="text-base">📋</span>
+            <span>¿Cómo funciona la quiniela?</span>
+          </span>
+          <svg
+            width="16" height="16" viewBox="0 0 24 24" fill="none"
+            className={["transition-transform", showInstructions ? "rotate-180" : ""].join(" ")}
+          >
+            <path d="M6 9l6 6 6-6" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        {showInstructions && (
+          <div className="mt-2 rounded-xl border border-border bg-surface p-4 space-y-4 text-sm">
+            {/* Steps */}
+            <div className="space-y-2">
+              <p className="text-xs text-textMuted font-semibold uppercase tracking-widest">Pasos</p>
+              {[
+                ["1️⃣", "Llena los marcadores de los 72 partidos de fase de grupos (12 grupos × 6 partidos)."],
+                ["2️⃣", "Avanza a la Llave Eliminatoria y elige quién gana cada ronda hasta la final."],
+                ["3️⃣", "¡Guarda antes del cierre! Cada partido se bloquea 6 horas antes de su inicio."],
+              ].map(([icon, text]) => (
+                <div key={icon} className="flex gap-2.5">
+                  <span className="shrink-0">{icon}</span>
+                  <span className="text-textMuted">{text}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Scoring */}
+            <div>
+              <p className="text-xs text-textMuted font-semibold uppercase tracking-widest mb-2">Puntos</p>
+              <div className="space-y-1">
+                <ScoringRow label="Marcador exacto (grupos)" pts={5} color="green" />
+                <ScoringRow label="Resultado correcto (grupos)" pts={3} color="green" />
+                <ScoringRow label="Ganador + marcador exacto (eliminatoria)" pts={8} color="amber" />
+                <ScoringRow label="Solo ganador correcto (eliminatoria)" pts={5} color="amber" />
+                <ScoringRow label="Wildcard — equipo avanzó en otra llave" pts={2} color="amber" />
+                <ScoringRow label="Campeón del grupo (bonus)" pts={5} color="blue" />
+                <ScoringRow label="Subcampeón del grupo (bonus)" pts={3} color="blue" />
+                <ScoringRow label="Tercer lugar del grupo (bonus)" pts={2} color="blue" />
+                <ScoringRow label="Campeón del torneo (bonus máximo)" pts={15} color="gold" />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       <ProgressBar value={totalCompleted} max={72} label={t("totalLabel")} />
 
       {/* Deadline banner */}
@@ -403,4 +457,19 @@ export function GruposClient({
 
 function formatGroupDeadline(d: Date): string {
   return d.toLocaleString("es-MX", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "America/Mexico_City" });
+}
+
+function ScoringRow({ label, pts, color }: { label: string; pts: number; color: "green" | "amber" | "blue" | "gold" }) {
+  const badge = {
+    green: "bg-brand-greenDim text-brand-green",
+    amber: "bg-[rgba(255,193,7,0.1)] text-amber",
+    blue: "bg-[rgba(100,160,255,0.1)] text-[#64A0FF]",
+    gold: "bg-[rgba(255,215,0,0.1)] text-gold",
+  }[color];
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-textMuted text-xs">{label}</span>
+      <span className={["shrink-0 text-xs font-bold px-2 py-0.5 rounded-lg", badge].join(" ")}>+{pts} pts</span>
+    </div>
+  );
 }
